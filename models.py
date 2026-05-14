@@ -34,3 +34,25 @@ def init_models(db):
 
     # Returning 3 items now to match app.py expectation
     return User, CustomerContact, Appointment
+
+
+def init_models_with_supplies(db):
+    """Alternative init function that includes the Supplies model"""
+    User, CustomerContact, Appointment = init_models(db)
+    
+    class Supplies(db.Model):
+        __tablename__ = 'supplies'
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.String(100), nullable=False)
+        description = db.Column(db.Text)
+        current_count = db.Column(db.Integer, nullable=False, default=0)
+        minimum_threshold = db.Column(db.Integer, nullable=False, default=5)
+        unit = db.Column(db.String(20), nullable=False, default='units')
+        category = db.Column(db.String(50))
+        last_restocked = db.Column(db.DateTime)
+        supplier = db.Column(db.String(100))
+        
+        def __repr__(self):
+            return f'<Supplies {self.name}: {self.current_count} {self.unit}>'
+    
+    return User, CustomerContact, Appointment, Supplies
