@@ -1,0 +1,202 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="glass p-8 rounded-3xl shadow-2xl">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-3xl font-bold text-gray-800">Users Management</h2>
+        <button onclick="openAddModal()" class="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-xl transform hover:scale-105 transition">
+            + Add New User
+        </button>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="border-b border-gray-200">
+                    <th class="pb-3 text-gray-600">ID</th>
+                    <th class="pb-3 text-gray-600">Username</th>
+                    <th class="pb-3 text-gray-600">Full Name</th>
+                    <th class="pb-3 text-gray-600">Role</th>
+                    <th class="pb-3 text-gray-600">Created</th>
+                    <th class="pb-3 text-gray-600">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr class="border-b border-gray-100 hover:bg-white/50 transition">
+                    <td class="py-4">{{ user.user_id }}</td>
+                    <td class="py-4 font-semibold">{{ user.username }}</td>
+                    <td class="py-4">{{ user.full_name }}</td>
+                    <td class="py-4">
+                        <span class="px-3 py-1 rounded-full text-sm font-semibold
+                            {% if user.role == 'admin' %}bg-purple-100 text-purple-800
+                            {% elif user.role == 'cleaner' %}bg-blue-100 text-blue-800
+                            {% elif user.role == 'office' %}bg-green-100 text-green-800
+                            {% elif user.role == 'customer' %}bg-yellow-100 text-yellow-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {{ user.role|capitalize }}
+                        </span>
+                    </td>
+                    <td class="py-4 text-gray-600">{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td class="py-4 space-x-2">
+                        <button onclick="openEditModal({{ user.user_id }}, '{{ user.username }}', '{{ user.full_name }}', '{{ user.role }}')" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                            Edit
+                        </button>
+                        <button onclick="confirmDelete({{ user.user_id }}, '{{ user.username }}')" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit User Modal -->
+<div id="userModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="glass p-8 rounded-3xl shadow-2xl w-full max-w-md">
+        <h3 id="modalTitle" class="text-3xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"></h3>
+        <form id="userForm" onsubmit="submitUserForm(event)">
+            <input type="hidden" id="userId" value="">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <input type="text" id="username" name="username" required
+                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <input type="text" id="full_name" name="full_name" required
+                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                    <select id="role" name="role" required
+                            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                        <option value="admin">Admin</option>
+                        <option value="cleaner">Cleaner</option>
+                        <option value="office">Office</option>
+                        <option value="customer">Customer</option>
+                        <option value="observer">Observer</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password <span id="passwordHint" class="text-sm text-gray-500">(leave blank to keep current)</span></label>
+                    <input type="password" id="password" name="password"
+                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                </div>
+            </div>
+            <div class="flex space-x-4 mt-6">
+                <button type="submit" class="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-lg font-semibold hover:shadow-xl transition">
+                    Save
+                </button>
+                <button type="button" onclick="closeModal()" class="flex-1 bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-400 transition">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="glass p-8 rounded-3xl shadow-2xl w-full max-w-md text-center">
+        <div class="text-6xl mb-4">⚠️</div>
+        <h3 class="text-3xl font-bold mb-4 text-gray-800">Confirm Delete</h3>
+        <p class="text-gray-600 mb-6">Are you sure you want to delete user "<span id="deleteUserName" class="font-semibold"></span>"? This action cannot be undone.</p>
+        <div class="flex space-x-4">
+            <button onclick="deleteUser()" class="flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition">
+                Yes, Delete
+            </button>
+            <button onclick="closeDeleteModal()" class="flex-1 bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-400 transition">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let deleteUserId = null;
+
+function openAddModal() {
+    document.getElementById('modalTitle').textContent = 'Add New User';
+    document.getElementById('userId').value = '';
+    document.getElementById('userForm').reset();
+    document.getElementById('password').required = true;
+    document.getElementById('passwordHint').textContent = '(required)';
+    document.getElementById('userModal').classList.remove('hidden');
+}
+
+function openEditModal(id, username, fullName, role) {
+    document.getElementById('modalTitle').textContent = 'Edit User';
+    document.getElementById('userId').value = id;
+    document.getElementById('username').value = username;
+    document.getElementById('full_name').value = fullName;
+    document.getElementById('role').value = role;
+    document.getElementById('password').value = '';
+    document.getElementById('password').required = false;
+    document.getElementById('passwordHint').textContent = '(leave blank to keep current)';
+    document.getElementById('userModal').classList.remove('hidden');
+}
+
+function closeModal() {
+    document.getElementById('userModal').classList.add('hidden');
+}
+
+function confirmDelete(id, username) {
+    deleteUserId = id;
+    document.getElementById('deleteUserName').textContent = username;
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+    deleteUserId = null;
+}
+
+async function submitUserForm(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const userId = document.getElementById('userId').value;
+    const url = userId ? `/admin/users/edit/${userId}` : '/admin/users/add';
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.error || 'An error occurred');
+        }
+    } catch (error) {
+        alert('An error occurred');
+    }
+}
+
+async function deleteUser() {
+    if (!deleteUserId) return;
+
+    try {
+        const response = await fetch(`/admin/users/delete/${deleteUserId}`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert(result.error || 'An error occurred');
+        }
+    } catch (error) {
+        alert('An error occurred');
+    }
+}
+</script>
+{% endblock %}

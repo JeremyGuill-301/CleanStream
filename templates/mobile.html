@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { background: #f8fbff; font-family: sans-serif; text-align: center; margin: 0; }
+        .top-center { padding: 20px; background: white; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .user-name { color: #002366; font-weight: bold; font-size: 1.2rem; display: block; }
+        .user-creds { color: #5c6bc0; font-size: 0.9rem; }
+        .logout { color: #d32f2f; text-decoration: none; font-weight: bold; font-size: 0.8rem; }
+        .card { background: white; border-radius: 25px; padding: 20px; border: 2px solid #002366; margin: 20px; }
+        .schedule-item { background: #eef4ff; padding: 10px; margin: 5px; border-radius: 15px; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+    <div class="top-center">
+        <span class="user-name">{{ user.full_name }}</span>
+        <span class="user-creds">ID: {{ user.id }} | {{ user.role }}</span>
+        <br><a href="/logout" class="logout">Logout</a>
+    </div>
+
+    <div class="card">
+        <h3>Today's Job</h3>
+        <p id="status">Status: Pending</p>
+        <button onclick="markFinished(123)" style="background:#002366; color:white; border-radius:15px; width:100%; padding:10px;">Mark Finished</button>
+    </div>
+
+    <h3 style="color:#002366;">Weekly Schedule</h3>
+    <div id="weekly-schedule" class="card">Loading...</div>
+
+    <script>
+        function markFinished(id) {
+            fetch(`/api/complete_job/${id}`, {method: 'POST'}).then(() => {
+                document.getElementById('status').innerText = "Status: Finished";
+                alert("Updated!");
+            });
+        }
+        fetch(`/api/weekly_schedule/{{ user.id }}`).then(res => res.json()).then(data => {
+            document.getElementById('weekly-schedule').innerHTML = data.map(i => `
+                <div class="schedule-item"><span>${i.time.split(' ')[0]}</span><span>${i.status}</span></div>
+            `).join('') || "No jobs found.";
+        });
+    </script>
+</body>
+</html>

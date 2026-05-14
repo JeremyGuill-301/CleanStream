@@ -1,0 +1,8 @@
+flask
+flask-sqlalchemy
+flask-login
+flask-admin
+flask-migrate
+pymysql
+python-dotenv
+werkzeug

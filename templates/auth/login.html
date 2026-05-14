@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CleanStream - Login</title>
+    <style>
+        body { font-family: sans-serif; background: #1e293b; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 350px; text-align: center; }
+        h2 { color: #1e293b; margin-bottom: 20px; }
+        .input-group { text-align: left; margin-bottom: 15px; }
+        label { display: block; font-size: 14px; margin-bottom: 5px; color: #64748b; }
+        input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
+        button:hover { background: #1d4ed8; }
+        #error-msg { color: #ef4444; font-size: 14px; margin-top: 15px; display: none; }
+    </style>
+</head>
+<body>
+<div class="login-card">
+    <h2>CleanStream</h2>
+    <form method="POST" action="{{ url_for('login_page') }}">
+        <div class="input-group">
+            <label>Username</label>
+            <input type="text" name="username" placeholder="Enter username" required>
+        </div>
+        <div class="input-group">
+            <label>Password</label>
+            <input type="password" name="password" placeholder="Enter password" required>
+        </div>
+        <button type="submit">Sign In</button>
+    </form>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}<div style="color:red; margin-top:10px;">{{ messages[0] }}</div>{% endif %}
+    {% endwith %}
+</div>
+    <script>
+        function handleLogin() {
+            // 1. Grab values from the input fields
+            const uValue = document.getElementById('username_field').value;
+            const pValue = document.getElementById('password_field').value;
+            const errorDiv = document.getElementById('error-msg');
+
+            // Hide error message on new attempt
+            errorDiv.style.display = 'none';
+
+            console.log("Attempting login for:", uValue);
+
+            // 2. Send request to the Python backend
+            // Using 'u' and 'p' keys to match our current login.py
+            fetch(`/cgi-bin/login.py?u=${encodeURIComponent(uValue)}&p=${encodeURIComponent(pValue)}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    if(data.status === "success") {
+                        localStorage.setItem('isLoggedIn', 'true');
+                        window.location.href = "dashboard.html";
+                    } else {
+                        errorDiv.style.display = 'block';
+                    }
+                })
+                .catch(err => {
+                    console.error("Fetch error:", err);
+                    alert("System Error: Could not reach the login server.");
+                });
+        }
+    </script>
+</body>
+</html>
+

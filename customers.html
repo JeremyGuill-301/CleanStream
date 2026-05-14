@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CleanStream - Customers</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; display: flex; margin: 0; background: #f1f5f9; }
+        .sidebar { width: 250px; background: #1e293b; color: white; min-height: 100vh; padding: 20px; }
+        .main { flex: 1; padding: 40px; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #2563eb; color: white; text-transform: uppercase; font-size: 12px; }
+        tr:hover { background-color: #f8fafc; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>CleanStream</h2>
+        <p><a href="dashboard.html" style="color: #94a3b8; text-decoration: none;">← Back to Dashboard</a></p>
+    </div>
+    <div class="main">
+        <h1>Customer Directory</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                </tr>
+            </thead>
+            <tbody id="customer-list">
+                </tbody>
+        </table>
+    </div>
+    <script>
+        fetch('/cgi-bin/get_customers.py')
+            .then(res => res.json())
+            .then(data => {
+                const list = document.getElementById('customer-list');
+                data.forEach(cust => {
+                    list.innerHTML += `<tr>
+                        <td>${cust.customer_id}</td>
+                        <td>${cust.first_name}</td>
+                        <td>${cust.last_name}</td>
+                        <td>${cust.email_address}</td>
+                        <td>${cust.phone_number || 'N/A'}</td>
+                    </tr>`;
+                });
+            });
+    </script>
+</body>
+</html>
