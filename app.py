@@ -1,8 +1,16 @@
+import os
 from flask import Flask, request, render_template, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user
 
-app = Flask(__name__, template_folder='/var/www/html/templates')
+# Define the Global Variable
+# This points to the root directory of your project
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+# Use the Global Variable to define sub-paths
+template_dir = os.path.join(BASE_DIR, 'templates')
+static_dir = os.path.join(BASE_DIR, 'static')
+app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
 # --- CONFIGURATION ---
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:CleanStream475#@localhost/cleanstream_db'
