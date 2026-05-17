@@ -1,8 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
-from models import db, User
+from app import db, User
 
-main_bp = Blueprint('main', __name__)
+main_bp = Blueprint('main', __name__, url_prefix='/main', template_folder='/templates')
 
 @main_bp.route('/')
 @login_required

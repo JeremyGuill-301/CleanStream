@@ -1,7 +1,10 @@
 import os
+from dotenv import load_dotenv
 from flask import Flask, request, render_template, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user
+from flask_migrate import Migrate
+
 
 # Define the Global Variable
 # This points to the root directory of your project
@@ -10,10 +13,13 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 # Use the Global Variable to define sub-paths
 template_dir = os.path.join(BASE_DIR, 'templates')
 static_dir = os.path.join(BASE_DIR, 'static')
+
+load_dotenv(os.path.join(BASE_DIR, '.env'))
+
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
 # --- CONFIGURATION ---
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:CleanStream475#@localhost/cleanstream_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SECRET_KEY'] = 'CleanStream_Sprint3_2026'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -22,17 +28,28 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login_page'
 
+# Initialize Migration
+migrate = Migrate(app, db)
+
 # --- MODELS ---
-# Fixed unpacking to expect exactly 3 classes
+# Import all models
 from models import init_models
-User, CustomerContact, Appointment = init_models(db)
+User, CustomerContact, Appointment, Supplies, Vendors, SupplyInventory = init_models(db)
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- ROUTES ---
+# ---BLUEPRINTS---
+from routes.main import main_bp
+from routes.supplies import supply_bp
+from routes.admin import admin_bp
 
+app.register_blueprint(main_bp)
+app.register_blueprint(supply_bp)
+app.register_blueprint(admin_bp)
+
+# --- ROUTES ---
 @app.route('/')
 def index():
     if not current_user.is_authenticated:

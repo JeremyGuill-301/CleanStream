@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}CleanStream{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -28,46 +29,195 @@
         }
     </script>
     <style>
-        .sparkle-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            min-height: 100vh;
+            background-color: #f8fafc;
         }
-        .glass {
-            background: rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 30px 20px;
+            box-shadow: 2px 0 15px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            left: 0;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .sidebar-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sidebar-nav {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .sidebar-nav a {
+            color: #cbd5e1;
+            text-decoration: none;
+            padding: 12px 16px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.95rem;
+        }
+        .sidebar-nav a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            padding-left: 20px;
+        }
+        .sidebar-nav a.active {
+            background: #10b981;
+            color: white;
+            font-weight: 600;
+        }
+        .sidebar-footer {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 20px;
+            margin-top: auto;
+        }
+        .sidebar-footer a {
+            color: #cbd5e1;
+            text-decoration: none;
+            padding: 12px 16px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.95rem;
+        }
+        .sidebar-footer a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            padding-left: 20px;
+        }
+        .sidebar-footer a.logout:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: #fca5a5;
+        }
+        .content {
+            flex: 1;
+            margin-left: 250px;
+            padding: 40px;
+            background: #f8fafc;
+        }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .alert-success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+        .alert-danger {
+            background-color: #fee2e2;
+            color: #7f1d1d;
+            border-left: 4px solid #ef4444;
+        }
+        .alert-info {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+        @media (max-width: 768px) {
+            .sidebar { width: 200px; padding: 20px 15px; }
+            .content { margin-left: 200px; padding: 20px; }
+        }
+        @media (max-width: 640px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; min-height: auto; position: relative; border-radius: 0 0 8px 8px; }
+            .content { margin-left: 0; }
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
-    <nav class="bg-white/80 backdrop-blur-md shadow-lg sticky top-0 z-50">
-        <div class="container mx-auto px-4">
-            <div class="flex justify-between items-center py-4">
-                <a href="/" class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    ✨ CleanStream
-                </a>
-                <div class="space-x-4">
-                    <a href="/" class="text-gray-700 hover:text-blue-600 transition">Home</a>
-                    {% if current_user.is_authenticated %}
-                        <a href="/dashboard/" class="text-gray-700 hover:text-blue-600 transition">Dashboard</a>
-                        <a href="/dashboard/profile" class="text-gray-700 hover:text-blue-600 transition">Profile</a>
-                        {% if current_user.is_admin() %}
-                            <a href="/admin/" class="text-gray-700 hover:text-blue-600 transition">Admin</a>
-                        {% endif %}
-                        <a href="/auth/logout" class="bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition">Logout</a>
-                    {% else %}
-                        <a href="/auth/login" class="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition">Login</a>
-                    {% endif %}
-                </div>
-            </div>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <i class="fas fa-sparkles"></i>
+            CleanStream
         </div>
-    </nav>
+        
+        <nav class="sidebar-nav">
+            <a href="/" title="Go to home page">
+                <i class="fas fa-home" style="width: 18px;"></i>
+                Home
+            </a>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('dashboard') }}" title="View your dashboard">
+                    <i class="fas fa-chart-line" style="width: 18px;"></i>
+                    Dashboard
+                </a>
+                {% if current_user.role == 'OfficeAdmin' or current_user.role == 'BusinessOwner' %}
+                    <a href="{{ url_for('admin.index') }}" title="Admin panel">
+                        <i class="fas fa-shield-alt" style="width: 18px;"></i>
+                        Admin
+                    </a>
+                    <a href="{{ url_for('supplies.supplies_index') }}" title="Manage supplies">
+                        <i class="fas fa-boxes" style="width: 18px;"></i>
+                        Supplies
+                    </a>
+                {% endif %}
+            {% else %}
+                <a href="/auth/login" title="Sign in to your account">
+                    <i class="fas fa-sign-in-alt" style="width: 18px;"></i>
+                    Login
+                </a>
+            {% endif %}
+        </nav>
 
-    <div class="container mx-auto px-4 py-8">
+        <div class="sidebar-footer">
+            {% if current_user.is_authenticated %}
+                <a href="/dashboard/profile" title="View your profile">
+                    <i class="fas fa-user-circle" style="width: 18px;"></i>
+                    Profile
+                </a>
+                <a href="/auth/logout" class="logout" title="Sign out of your account">
+                    <i class="fas fa-sign-out-alt" style="width: 18px;"></i>
+                    Logout
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="content">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="mb-4 p-4 rounded-lg {% if category == 'success' %}bg-green-100 text-green-700{% elif category == 'danger' %}bg-red-100 text-red-700{% else %}bg-blue-100 text-blue-700{% endif %}">
-                        {{ message }}
+                    <div class="alert {% if category == 'success' %}alert-success{% elif category == 'danger' %}alert-danger{% else %}alert-info{% endif %}">
+                        <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+                        <span>{{ message }}</span>
                     </div>
                 {% endfor %}
             {% endif %}

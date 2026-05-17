@@ -1,14 +1,14 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from models import db, User
+from app import db, User
 from werkzeug.security import generate_password_hash
 
-admin_bp = Blueprint('admin', __name__)
+admin_bp = Blueprint('admin', __name__, url_prefix='/admin', template_folder='/templates')
 
 @admin_bp.route('/')
 @login_required
 def index():
-    if not current_user.is_admin():
+    if current_user.role not in ['OfficeAdmin', 'BusinessOwner']:
         flash('Access denied. Admin privileges required.', 'danger')
         return redirect(url_for('main.dashboard'))
     return render_template('admin/base.html')
@@ -16,7 +16,7 @@ def index():
 @admin_bp.route('/users')
 @login_required
 def users():
-    if not current_user.is_admin():
+    if current_user.role not in ['OfficeAdmin', 'BusinessOwner']:
         flash('Access denied. Admin privileges required.', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -26,7 +26,7 @@ def users():
 @admin_bp.route('/users/add', methods=['POST'])
 @login_required
 def add_user():
-    if not current_user.is_admin():
+    if current_user.role not in ['OfficeAdmin', 'BusinessOwner']:
         return jsonify({'error': 'Access denied'}), 403
 
     data = request.form
@@ -48,7 +48,7 @@ def add_user():
 @admin_bp.route('/users/edit/<int:user_id>', methods=['POST'])
 @login_required
 def edit_user(user_id):
-    if not current_user.is_admin():
+    if current_user.role not in ['OfficeAdmin', 'BusinessOwner']:
         return jsonify({'error': 'Access denied'}), 403
 
     user = User.query.get_or_404(user_id)
@@ -72,7 +72,7 @@ def edit_user(user_id):
 @admin_bp.route('/users/delete/<int:user_id>', methods=['POST'])
 @login_required
 def delete_user(user_id):
-    if not current_user.is_admin():
+    if current_user.role not in ['OfficeAdmin', 'BusinessOwner']:
         return jsonify({'error': 'Access denied'}), 403
 
     if user_id == current_user.user_id:

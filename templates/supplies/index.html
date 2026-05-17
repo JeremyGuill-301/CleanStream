@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+
+{% block title %}Supplies - CleanStream{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-2xl font-bold">Supplies Inventory</h1>
+        {% if current_user.role in ['OfficeAdmin', 'BusinessOwner'] %}
+        <button id="addSupplyBtn" class="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition">
+            <i class="fas fa-plus mr-2"></i>Add Supply
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Add Supply Form (hidden by default) -->
+    <div id="addSupplyForm" class="hidden bg-white/80 backdrop-blur-md rounded-xl p-6 shadow-lg">
+        <h2 class="text-xl font-semibold mb-4">Add New Supply</h2>
+        <form id="supplyForm">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supply Name*</label>
+                    <input type="text" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <input type="text" name="description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Current Count*</label>
+                    <input type="number" name="current_count" min="0" value="0" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Minimum Threshold*</label>
+                    <input type="number" name="minimum_threshold" min="0" value="5" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Unit*</label>
+                    <input type="text" name="unit" value="units" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <input type="text" name="category" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button type="button" id="cancelSupplyBtn" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">
+                    Cancel
+                </button>
+                <button type="submit" class="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition">
+                    Save Supply
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Supplies Table -->
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white/80 backdrop-blur-md rounded-xl overflow-hidden shadow-lg">
+            <thead class="bg-gradient-to-r from-blue-100 to-purple-100">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Supply Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Current Count</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Unit</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Category</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for supply in supplies %}
+                <tr class="hover:bg-gray-50 transition-colors" data-supply-id="{{ supply.id }}">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">{{ supply.name }}</div>
+                        {% if supply.description %}
+                        <p class="text-xs text-gray-500">{{ supply.description }}</p>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">{{ supply.current_count }}</div>
+                        {% if supply.needs_restocking() %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Low Stock
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ supply.unit }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ supply.category or 'N/A' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if supply.needs_restocking() %}
+                        <span class="px-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Needs Restock
+                        </span>
+                        {% else %}
+                        <span class="px-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            In Stock
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-blue-600 hover:text-blue-900 view-supply-btn" data-supply-id="{{ supply.id }}">
+                            View Details
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+                
+                {% if supplies|length == 0 %}
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                        No supplies found. Add your first supply above.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Supply Details Modal -->
+<div id="supplyModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity">
+            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div class="sm:flex sm:items-start">
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                        <h3 class="text-lg font-medium text-gray-900" id="modalSupplyName">Supply Name</h3>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500" id="modalSupplyDescription">Description</p>
+                        </div>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500"><strong>Unit:</strong> <span id="modalSupplyUnit">units</span></p>
+                        </div>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500"><strong>Category:</strong> <span id="modalSupplyCategory">N/A</span></p>
+                        </div>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500"><strong>Current Count:</strong> <span id="modalSupplyCount">0</span></p>
+                        </div>
+                        <div class="mt-2">
+                            <p class="text-sm text-gray-500"><strong>Minimum Threshold:</strong> <span id="modalSupplyMinThreshold">5</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-5 sm:px-6">
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Order History</h3>
+                        <div id="orderHistory" class="mt-2 space-y-2">
+                            <!-- Order history will be populated here -->
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900">Stock Usage History</h3>
+                        <div id="usageHistory" class="mt-2 space-y-2">
+                            <!-- Usage history will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button type="button"
+                    class="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
+                    id="closeModalBtn">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addSupplyBtn = document.getElementById('addSupplyBtn');
+    const addSupplyForm = document.getElementById('addSupplyForm');
+    const cancelSupplyBtn = document.getElementById('cancelSupplyBtn');
+    const supplyForm = document.getElementById('supplyForm');
+    const viewSupplyButtons = document.querySelectorAll('.view-supply-btn');
+    const supplyModal = document.getElementById('supplyModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    
+    // Toggle add supply form
+    if (addSupplyBtn) {
+        addSupplyBtn.addEventListener('click', function() {
+            addSupplyForm.classList.toggle('hidden');
+        });
+    }
+    
+    if (cancelSupplyBtn) {
+        cancelSupplyBtn.addEventListener('click', function() {
+            addSupplyForm.classList.add('hidden');
+            supplyForm.reset();
+        });
+    }
+    
+    // Handle form submission
+    if (supplyForm) {
+        supplyForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(supplyForm);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Convert numeric fields
+            data.current_count = parseInt(data.current_count);
+            data.minimum_threshold = parseInt(data.minimum_threshold);
+            
+            fetch('/supplies/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // Add new row to table or reload page
+                    location.reload();
+                } else {
+                    alert('Error adding supply: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error adding supply');
+            });
+        });
+    }
+    
+    // Handle view supply button clicks
+    viewSupplyButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const supplyId = this.getAttribute('data-supply-id');
+            fetch(`/supplies/${supplyId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const supply = data.supply;
+                        document.getElementById('modalSupplyName').textContent = supply.name;
+                        document.getElementById('modalSupplyDescription').textContent = supply.description || 'No description';
+                        document.getElementById('modalSupplyUnit').textContent = supply.unit;
+                        document.getElementById('modalSupplyCategory').textContent = supply.category || 'N/A';
+                        document.getElementById('modalSupplyCount').textContent = supply.current_count;
+                        document.getElementById('modalSupplyMinThreshold').textContent = supply.minimum_threshold;
+                        
+                        // Populate order history
+                        const orderHistoryDiv = document.getElementById('orderHistory');
+                        orderHistoryDiv.innerHTML = '';
+                        
+                        const orders = data.inventory.filter(item => item.transaction_type === 'Order');
+                        if (orders.length > 0) {
+                            orders.forEach(order => {
+                                const orderElement = document.createElement('div');
+                                orderElement.className = 'p-3 bg-white rounded border';
+                                orderElement.innerHTML = `
+                                    <p class="text-sm font-medium">Order #${order.id}</p>
+                                    <p class="text-xs text-gray-500">${new Date(order.order_date).toLocaleDateString()}</p>
+                                    <p class="text-sm">${order.quantity_ordered} ${supply.unit}</p>
+                                    ${order.vendor ? `<p class="text-xs text-gray-500">From: ${order.vendor.name}</p>` : ''}
+                                    <p class="text-xs text-gray-500">Status: ${order.status}</p>
+                                `;
+                                orderHistoryDiv.appendChild(orderElement);
+                            });
+                        } else {
+                            orderHistoryDiv.innerHTML = '<p class="text-xs text-gray-500">No order history</p>';
+                        }
+                        
+                        // Populate usage history
+                        const usageHistoryDiv = document.getElementById('usageHistory');
+                        usageHistoryDiv.innerHTML = '';
+                        
+                        const usages = data.inventory.filter(item => item.transaction_type === 'Stock Taken');
+                        if (usages.length > 0) {
+                            usages.forEach(usage => {
+                                const usageElement = document.createElement('div');
+                                usageElement.className = 'p-3 bg-white rounded border';
+                                usageElement.innerHTML = `
+                                    <p class="text-sm font-medium">Stock Taken</p>
+                                    <p class="text-xs text-gray-500">${new Date(usage.taken_at).toLocaleDateString()}</p>
+                                    <p class="text-sm">${usage.quantity_ordered} ${supply.unit}</p>
+                                    ${usage.taken_by_user ? `<p class="text-xs text-gray-500">Taken by: ${usage.taken_by_user.full_name}</p>` : ''}
+                                    ${usage.reason ? `<p class="text-xs text-gray-500 italic">${usage.reason}</p>` : ''}
+                                `;
+                                usageHistoryDiv.appendChild(usageElement);
+                            });
+                        } else {
+                            usageHistoryDiv.innerHTML = '<p class="text-xs text-gray-500">No usage history</p>';
+                        }
+                        
+                        supplyModal.classList.remove('hidden');
+                    } else {
+                        alert('Error loading supply details');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error loading supply details');
+                });
+        });
+    });
+    
+    // Close modal
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', function() {
+            supplyModal.classList.add('hidden');
+        });
+    }
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+        if (event.target === supplyModal) {
+            supplyModal.classList.add('hidden');
+        }
+    });
+});
+</script>
+{% endblock %}
