@@ -1,116 +1,217 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>CleanStream - Dashboard</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        body { font-family: sans-serif; display: flex; margin: 0; background-color: #f8f9fa; }
-        .sidebar { width: 250px; background: #1e293b; color: white; min-height: 100vh; padding: 20px; }
-        .content { flex: 1; padding: 40px; }
-        .add-btn { background: #10b981; color: white; border: none; padding: 10px 15px; border-radius: 50%; cursor: pointer; font-size: 20px; }
-        .form-popup { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px; max-width: 400px; }
-        input, select { width: 100%; padding: 8px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        .submit-btn { background: #2563eb; color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <div class="sidebar">
-        <h2>CleanStream</h2>
-        <a href="{{ url_for('dashboard') }}" style="color:white; text-decoration:none;">Dashboard Home</a>
-        <a href="{{ url_for('logout') }}" style="color:#ef4444; text-decoration:none; margin-top:20px; display:block;">Log Out</a>
-    </div>
+{% extends "base.html" %}
 
-<div class="content">
-    <h1>Admin Dashboard</h1>
+{% block title %}CleanStream - Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    .dashboard-container { max-width: 1200px; }
+    .section-title { font-size: 1.875rem; font-weight: 700; color: #1e293b; margin-bottom: 30px; }
+    .add-btn { 
+        background: #10b981; 
+        color: white; 
+        border: none; 
+        padding: 12px 16px; 
+        border-radius: 8px; 
+        cursor: pointer; 
+        font-size: 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+    .add-btn:hover { 
+        background: #059669;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    .form-popup { 
+        display: none; 
+        background: white; 
+        padding: 24px; 
+        border-radius: 8px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+        margin-top: 20px; 
+        max-width: 500px;
+    }
+    .form-popup.show { display: block; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-weight: 500; color: #334155; margin-bottom: 6px; font-size: 0.95rem; }
+    input, select { 
+        width: 100%; 
+        padding: 10px 12px; 
+        border: 1px solid #cbd5e1; 
+        border-radius: 6px; 
+        box-sizing: border-box;
+        font-size: 0.95rem;
+        transition: border-color 0.3s ease;
+    }
+    input:focus, select:focus { 
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    .submit-btn { 
+        background: #2563eb; 
+        color: white; 
+        border: none; 
+        padding: 11px 20px; 
+        width: 100%; 
+        border-radius: 6px; 
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .submit-btn:hover { 
+        background: #1d4ed8;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        margin-bottom: 30px;
+    }
+    .table-title { 
+        font-size: 1.25rem; 
+        font-weight: 600; 
+        color: #1e293b; 
+        margin-top: 30px;
+        margin-bottom: 16px;
+    }
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        background: white;
+    }
+    thead { background: #1e293b; color: white; }
+    th { 
+        padding: 14px 16px; 
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.9rem;
+        letter-spacing: 0.5px;
+    }
+    td { 
+        padding: 14px 16px;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 0.95rem;
+        color: #475569;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #f8fafc; }
+    .role-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        background: #f1f5f9;
+        color: #475569;
+    }
+    .pending-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .pending-section h3 {
+        color: #1e293b;
+        font-size: 1.1rem;
+        margin: 0;
+    }
+</style>
+
+<div class="dashboard-container">
+    <h1 class="section-title">Admin Dashboard</h1>
     
     {% if current_user.role == 'OfficeAdmin' %}
-    <button onclick="toggleForm()" style="background:#10b981; color:white; border:none; padding:10px; border-radius:50%; cursor:pointer;">
+    <button class="add-btn" onclick="toggleForm()">
         <i class="fas fa-user-plus"></i>
+        Add Employee
     </button>
-    <div id="addEmployeeForm" style="display:none; background:white; padding:20px; margin-top:10px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+    
+    <div id="addEmployeeForm" class="form-popup">
+        <h3 style="color: #1e293b; margin-top: 0; margin-bottom: 20px;">Add New Employee</h3>
         <form action="{{ url_for('add_employee') }}" method="POST">
-            <input type="text" name="full_name" placeholder="Full Name" required style="display:block; margin-bottom:10px; width:100%;">
-            <input type="text" name="username" placeholder="Username" required style="display:block; margin-bottom:10px; width:100%;">
-            <input type="email" name="email" placeholder="Email" style="display:block; margin-bottom:10px; width:100%;">
-            <input type="password" name="password" placeholder="Password" required style="display:block; margin-bottom:10px; width:100%;">
-            <select name="role" style="display:block; margin-bottom:10px; width:100%;">
-                <option value="Cleaner">Cleaner</option>
-                <option value="OfficeAdmin">Office Admin</option>
-                <option value="BusinessOwner">Business Owner</option>
-            </select>
-            <button type="submit" style="background:#2563eb; color:white; border:none; padding:10px; width:100%;">Save</button>
+            <div class="form-group">
+                <label for="full_name">Full Name</label>
+                <input type="text" id="full_name" name="full_name" placeholder="Enter full name" required>
+            </div>
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Enter username" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="Enter email address">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter password" required>
+            </div>
+            <div class="form-group">
+                <label for="role">Role</label>
+                <select id="role" name="role" required>
+                    <option value="">Select a role</option>
+                    <option value="Cleaner">Cleaner</option>
+                    <option value="OfficeAdmin">Office Admin</option>
+                    <option value="BusinessOwner">Business Owner</option>
+                </select>
+            </div>
+            <button type="submit" class="submit-btn">
+                <i class="fas fa-save" style="margin-right: 8px;"></i>
+                Save Employee
+            </button>
         </form>
     </div>
     {% endif %}
 
-    <div style="margin-top:30px;">
-        <h2>Employee Directory</h2>
-        <table border="1" style="width:100%; border-collapse:collapse; background:white;">
-            <thead style="background:#f1f5f9;">
+    <div class="table-container">
+        <div style="padding: 20px; border-bottom: 1px solid #e2e8f0;">
+            <h2 class="table-title" style="margin: 0;">Employee Directory</h2>
+        </div>
+        <table>
+            <thead>
                 <tr>
-                    <th>Name</th>
+                    <th>Full Name</th>
                     <th>Username</th>
+                    <th>Email</th>
                     <th>Role</th>
                 </tr>
             </thead>
             <tbody>
                 {% for emp in employees %}
                 <tr>
-                    <td style="padding:10px;">{{ emp.full_name }}</td>
-                    <td style="padding:10px;">{{ emp.username }}</td>
-                    <td style="padding:10px;">{{ emp.role }}</td>
+                    <td><strong>{{ emp.full_name }}</strong></td>
+                    <td>{{ emp.username }}</td>
+                    <td>{{ emp.email if emp.email else 'N/A' }}</td>
+                    <td>
+                        <span class="role-badge">
+                            {{ emp.role }}
+                        </span>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+
+    {% if pending is defined %}
+    <div class="pending-section">
+        <h3>
+            <i class="fas fa-calendar-check" style="color: #10b981; margin-right: 10px;"></i>
+            Pending Appointments: <strong>{{ pending }}</strong>
+        </h3>
+    </div>
+    {% endif %}
 </div>
 
 <script>
     function toggleForm() {
-        var x = document.getElementById("addEmployeeForm");
-        x.style.display = (x.style.display === "none") ? "block" : "none";
+        const form = document.getElementById("addEmployeeForm");
+        form.classList.toggle("show");
     }
 </script>
-
-<div style="margin-top: 40px;">
-    <h2>Employee Directory</h2>
-    <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <thead style="background: #1e293b; color: white;">
-            <tr>
-                <th style="padding: 12px; text-align: left;">Full Name</th>
-                <th style="padding: 12px; text-align: left;">Username</th>
-                <th style="padding: 12px; text-align: left;">Email</th>
-                <th style="padding: 12px; text-align: left;">Role</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for emp in employees %}
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 12px;">{{ emp.full_name }}</td>
-                <td style="padding: 12px;">{{ emp.username }}</td>
-                <td style="padding: 12px;">{{ emp.email if emp.email else 'N/A' }}</td>
-                <td style="padding: 12px;">
-                    <span style="padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; background: #f1f5f9;">
-                        {{ emp.role }}
-                    </span>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
-        <div style="margin-top: 30px;">
-            <h3>Pending Appointments: {{ pending }}</h3>
-        </div>
-    </div>
-
-    <script>
-        function toggleForm() {
-            var form = document.getElementById("addEmployeeForm");
-            form.style.display = (form.style.display === "block") ? "none" : "block";
-        }
-    </script>
-</body>
-</html>
+{% endblock %}
