@@ -179,6 +179,12 @@
                     <i class="fas fa-chart-line" style="width: 18px;"></i>
                     Dashboard
                 </a>
+	    
+	    <a href="{{ url_for('main.scheduler') }}" title="View system schedule visualizer">
+             	    <i class="fas fa-calendar-alt" style="width: 18px;"></i>
+            	    Calendar
+        	</a>
+
                 {% if current_user.role == 'OfficeAdmin' or current_user.role == 'BusinessOwner' %}
                     <a href="{{ url_for('admin.index') }}" title="Admin panel">
                         <i class="fas fa-shield-alt" style="width: 18px;"></i>
