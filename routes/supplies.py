@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from app import db, Supplies, SupplyInventory, Vendors
+from datetime import datetime
 
 supply_bp = Blueprint('supplies', __name__, url_prefix='/supplies', template_folder='/templates')
 
@@ -14,7 +15,7 @@ def supplies_index():
     supplies = Supplies.query.all()
     return render_template('supplies/index.html', supplies=supplies)
 
-@supply_bp.route('/supplies/add', methods=['POST'])
+@supply_bp.route('/add', methods=['POST'])
 @login_required
 def add_supply():
     if current_user.role not in ['OfficeAdmin', 'BusinessOwner']:
@@ -32,12 +33,12 @@ def add_supply():
         )
         db.session.add(new_supply)
         db.session.commit()
-        return jsonify({'success': True, 'message': 'Supply added successfully'})
+        return jsonify({'success': True, 'message': 'Supply added successfully', 'supply_id': new_supply.id})
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 400
 
-@supply_bp.route('/supplies/<int:supply_id>')
+@supply_bp.route('/<int:supply_id>', methods=['GET'])
 @login_required
 def get_supply_details(supply_id):
     if current_user.role not in ['OfficeAdmin', 'BusinessOwner']:
@@ -91,3 +92,63 @@ def get_supply_details(supply_id):
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 400
+
+@supply_bp.route('/log-usage', methods=['POST'])
+@login_required
+def log_supply_usage():
+    """Log when a cleaner takes supplies. Records usage and updates inventory."""
+    try:
+        data = request.get_json()
+        supply_id = data.get('supply_id')
+        quantity = int(data.get('quantity', 0))
+        reason = data.get('reason', '')
+        
+        if quantity <= 0:
+            return jsonify({'success': False, 'message': 'Quantity must be greater than 0'}), 400
+        
+        supply = Supplies.query.get_or_404(supply_id)
+        
+        # Create inventory log entry
+        log_entry = SupplyInventory(
+            supply_id=supply_id,
+            quantity_ordered=quantity,
+            transaction_type='Stock Taken',
+            taken_by_user_id=current_user.id,
+            taken_at=datetime.now(),
+            reason=reason,
+            quantity_remaining=supply.current_count - quantity,
+            status='Delivered'  # Use 'Delivered' status for stock taken entries
+        )
+        
+        # Update supply count
+        supply.current_count -= quantity
+        
+        db.session.add(log_entry)
+        db.session.commit()
+        
+        # Check if supply is now below threshold
+        needs_restock = supply.current_count <= supply.minimum_threshold
+        message = None
+        
+        if needs_restock:
+            message = f"⚠️ {supply.name} is now below minimum threshold ({supply.current_count} {supply.unit} remaining)"
+            flash(message, 'warning')
+            # TODO: Send email notification to admin
+        
+        return jsonify({
+            'success': True,
+            'message': 'Supply usage logged successfully',
+            'new_count': supply.current_count,
+            'needs_restock': needs_restock,
+            'restock_message': message
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+@supply_bp.route('/mobile', methods=['GET'])
+@login_required
+def mobile_supply_intake():
+    """Mobile-first page for cleaners to log supply usage."""
+    supplies = Supplies.query.all()
+    return render_template('supplies/mobile_intake.html', supplies=supplies)
