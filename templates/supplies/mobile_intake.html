@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}Supply Intake - CleanStream{% endblock %}
+
+{% block content %}
+<style>
+    .mobile-container {
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    .intake-form {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        padding: 24px;
+        margin-bottom: 30px;
+    }
+    .form-section {
+        margin-bottom: 24px;
+    }
+    .form-section:last-child {
+        margin-bottom: 0;
+    }
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+    }
+    .form-label.required::after {
+        content: " *";
+        color: #ef4444;
+    }
+    .supply-select {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: white;
+    }
+    .supply-select:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    .quantity-input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    .quantity-input:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    .reason-input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-family: inherit;
+        resize: vertical;
+        min-height: 100px;
+        transition: all 0.3s ease;
+    }
+    .reason-input:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    .supply-info {
+        background: #f0fdf4;
+        border-left: 4px solid #10b981;
+        padding: 12px;
+        border-radius: 4px;
+        margin-top: 8px;
+        font-size: 0.9rem;
+        color: #166534;
+    }
+    .form-buttons {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+    }
+    .btn {
+        flex: 1;
+        padding: 14px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .btn-submit {
+        background: #10b981;
+        color: white;
+    }
+    .btn-submit:hover {
+        background: #059669;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    .btn-submit:active {
+        transform: translateY(0);
+    }
+    .btn-reset {
+        background: #e2e8f0;
+        color: #475569;
+    }
+    .btn-reset:hover {
+        background: #cbd5e1;
+    }
+    .success-message {
+        background: #d1fae5;
+        border: 2px solid #10b981;
+        color: #065f46;
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: none;
+    }
+    .success-message.show {
+        display: block;
+        animation: slideDown 0.3s ease;
+    }
+    .warning-message {
+        background: #fef3c7;
+        border: 2px solid #f59e0b;
+        color: #92400e;
+        padding: 16px;
+        border-radius: 8px;
+        margin-top: 16px;
+        display: none;
+    }
+    .warning-message.show {
+        display: block;
+        animation: slideDown 0.3s ease;
+    }
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    .loading {
+        display: none;
+    }
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    .page-title {
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 8px;
+    }
+    .page-subtitle {
+        color: #64748b;
+        margin-bottom: 24px;
+        font-size: 0.95rem;
+    }
+</style>
+
+<div class="mobile-container">
+    <h1 class="page-title">
+        <i class="fas fa-warehouse" style="color: #10b981; margin-right: 8px;"></i>
+        Supply Intake
+    </h1>
+    <p class="page-subtitle">Log supplies you're taking for your cleaning tasks</p>
+    
+    <div id="successMessage" class="success-message">
+        <i class="fas fa-check-circle" style="margin-right: 8px;"></i>
+        <span id="successText">Supply logged successfully!</span>
+    </div>
+
+    <form id="intakeForm" class="intake-form">
+        <div class="form-section">
+            <label for="supplySelect" class="form-label required">Select Supply</label>
+            <select id="supplySelect" name="supply_id" class="supply-select" required>
+                <option value="">Choose a supply...</option>
+                {% for supply in supplies %}
+                <option value="{{ supply.id }}" data-unit="{{ supply.unit }}" data-count="{{ supply.current_count }}" data-name="{{ supply.name }}">
+                    {{ supply.name }}
+                </option>
+                {% endfor %}
+            </select>
+            <div id="supplyInfo" class="supply-info" style="display: none;">
+                <strong id="supplyName"></strong> - 
+                <span id="supplyCount"></span> <span id="supplyUnit"></span> available
+            </div>
+        </div>
+
+        <div class="form-section">
+            <label for="quantityInput" class="form-label required">Quantity</label>
+            <input 
+                type="number" 
+                id="quantityInput" 
+                name="quantity" 
+                class="quantity-input" 
+                min="1" 
+                step="1" 
+                placeholder="Enter quantity"
+                required
+            >
+            <small style="color: #64748b; margin-top: 6px; display: block;">How many units are you taking?</small>
+        </div>
+
+        <div class="form-section">
+            <label for="reasonInput" class="form-label">Reason (Optional)</label>
+            <textarea 
+                id="reasonInput" 
+                name="reason" 
+                class="reason-input" 
+                placeholder="What are you using this for? (e.g., Office cleaning, Supply shortage, etc.)"
+            ></textarea>
+        </div>
+
+        <div class="form-buttons">
+            <button type="reset" class="btn btn-reset">
+                <i class="fas fa-redo"></i>
+                Clear
+            </button>
+            <button type="submit" class="btn btn-submit" id="submitBtn">
+                <i class="fas fa-check"></i>
+                <span id="submitText">Log Supply</span>
+                <span class="loading" id="submitLoading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </span>
+            </button>
+        </div>
+    </form>
+
+    <div id="warningMessage" class="warning-message">
+        <i class="fas fa-exclamation-triangle" style="margin-right: 8px;"></i>
+        <strong>Low Stock Alert!</strong>
+        <p id="warningText" style="margin: 8px 0 0 0;"></p>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const intakeForm = document.getElementById('intakeForm');
+        const supplySelect = document.getElementById('supplySelect');
+        const supplyInfo = document.getElementById('supplyInfo');
+        const supplyName = document.getElementById('supplyName');
+        const supplyCount = document.getElementById('supplyCount');
+        const supplyUnit = document.getElementById('supplyUnit');
+        const quantityInput = document.getElementById('quantityInput');
+        const reasonInput = document.getElementById('reasonInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const successMessage = document.getElementById('successMessage');
+        const warningMessage = document.getElementById('warningMessage');
+        const warningText = document.getElementById('warningText');
+
+        // Show supply info when selected
+        supplySelect.addEventListener('change', function() {
+            if (this.value) {
+                const option = this.options[this.selectedIndex];
+                supplyName.textContent = option.getAttribute('data-name');
+                supplyCount.textContent = option.getAttribute('data-count');
+                supplyUnit.textContent = option.getAttribute('data-unit');
+                supplyInfo.style.display = 'block';
+                quantityInput.focus();
+            } else {
+                supplyInfo.style.display = 'none';
+            }
+        });
+
+        // Handle form submission
+        intakeForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const supplyId = supplySelect.value;
+            const quantity = parseInt(quantityInput.value);
+            const reason = reasonInput.value;
+
+            if (!supplyId || !quantity || quantity <= 0) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            // Disable submit button and show loading
+            submitBtn.disabled = true;
+            document.getElementById('submitLoading').style.display = 'inline';
+            document.getElementById('submitText').style.display = 'none';
+
+            fetch('/supplies/log-usage', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    supply_id: supplyId,
+                    quantity: quantity,
+                    reason: reason
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    successMessage.classList.add('show');
+                    document.getElementById('successText').textContent = 
+                        `✓ Logged ${quantity} ${supplySelect.options[supplySelect.selectedIndex].getAttribute('data-unit')} successfully!`;
+                    
+                    // Show warning if needed
+                    if (data.needs_restock) {
+                        warningMessage.classList.add('show');
+                        warningText.textContent = data.restock_message;
+                    }
+
+                    // Reset form
+                    intakeForm.reset();
+                    supplyInfo.style.display = 'none';
+
+                    // Hide messages after 5 seconds
+                    setTimeout(() => {
+                        successMessage.classList.remove('show');
+                        if (data.needs_restock) {
+                            warningMessage.classList.remove('show');
+                        }
+                    }, 5000);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error logging supply. Please try again.');
+            })
+            .finally(() => {
+                // Re-enable submit button
+                submitBtn.disabled = false;
+                document.getElementById('submitLoading').style.display = 'none';
+                document.getElementById('submitText').style.display = 'inline';
+            });
+        });
+    });
+</script>
+{% endblock %}
