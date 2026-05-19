@@ -75,11 +75,16 @@
         background: white;
         border-radius: 12px;
         box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        width: 90%;
-        max-width: 600px;
+        width: 94%;
+        max-width: 900px; /* widened to accommodate three columns */
         max-height: 90vh;
         overflow-y: auto;
         animation: slideUp 0.3s ease;
+        transition: transform 0.18s ease;
+    }
+    /* raise modal content slightly when shown so it sits a bit higher than perfectly centered */
+    .modal.show .modal-content {
+        transform: translateY(-20px);
     }
     @keyframes slideUp {
         from {
@@ -225,9 +230,12 @@
         background: #fee2e2;
         color: #7f1d1d;
     }
+    /* Make Low Stock pill a distinct orange/yellow so it differs from the red restock badge */
     .badge-warning {
-        background: #fef3c7;
-        color: #92400e;
+        background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%); /* light warm background */
+        color: #b45309; /* darker orange text */
+        border: 1px solid rgba(245, 158, 11, 0.12);
+        box-shadow: 0 1px 0 rgba(0,0,0,0.02) inset;
     }
     .action-links {
         display: flex;
@@ -259,6 +267,56 @@
         color: #64748b;
         margin-bottom: 20px;
     }
+    /* three column layout for supply details (Usage / Delivered / Ordered) */
+    .three-columns {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-top: 8px;
+    }
+    .column {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 12px;
+        border: 1px solid #e6edf3;
+    }
+    .column-header {
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .item-card {
+        padding: 10px;
+        border-radius: 8px;
+        background: #f8fafc;
+        margin-bottom: 10px;
+        border-left: 4px solid rgba(0,0,0,0.03);
+    }
+    .item-title {
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0 0 4px 0;
+    }
+    .item-meta {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin: 0;
+    }
+    .status-pill {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        vertical-align: middle;
+    }
+    .status-pill.pending { background: #fff7ed; color: #b45309; border: 1px solid rgba(245,158,11,0.12); }
+    .status-pill.delivered { background: #ecfdf5; color: #065f46; border: 1px solid rgba(16,185,129,0.08); }
+    .status-pill.cancelled { background: #fee2e2; color: #7f1d1d; border: 1px solid rgba(124,58,57,0.06); }
+    .pill-default { background: #eef2ff; color: #3730a3; border: 1px solid rgba(99,102,241,0.08); }
 </style>
 
 <div class="space-y-6">
@@ -384,27 +442,48 @@
                     <div id="modalSupplyStatus" style="margin: 0;"></div>
                 </div>
 
-                <div style="margin-top: 30px;">
-                    <h3 style="font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-bottom: 16px;">
-                        <i class="fas fa-history" style="color: #3b82f6; margin-right: 8px;"></i>
-                        Order History
+                <div style="margin-top: 20px;">
+                    <h3 style="font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-bottom: 12px;">
+                        <i class="fas fa-list" style="color: #3b82f6; margin-right: 8px;"></i>
+                        Recent Activity
                     </h3>
-                    <div id="orderHistory" style="space-y: 12px;">
-                        <!-- Order history will be populated here -->
-                    </div>
-                </div>
 
-                <div style="margin-top: 30px;">
-                    <h3 style="font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-bottom: 16px;">
-                        <i class="fas fa-arrow-down" style="color: #f59e0b; margin-right: 8px;"></i>
-                        Usage History
-                    </h3>
-                    <div id="usageHistory" style="space-y: 12px;">
-                        <!-- Usage history will be populated here -->
+                    <div class="three-columns">
+                        <div class="column" id="usageColumn">
+                            <div class="column-header">
+                                <span>Usage</span>
+                                <small style="color: #94a3b8; font-weight: 600;">Recent</small>
+                            </div>
+                            <div id="usageHistory"></div>
+                        </div>
+
+                        <div class="column" id="deliveredColumn">
+                            <div class="column-header">
+                                <span>Delivered</span>
+                                <small style="color: #94a3b8; font-weight: 600;">Receipts</small>
+                            </div>
+                            <div id="deliveredHistory"></div>
+                        </div>
+
+                        <div class="column" id="orderedColumn">
+                            <div class="column-header">
+                                <span>Ordered</span>
+                                <small style="color: #94a3b8; font-weight: 600;">Orders</small>
+                            </div>
+                            <div id="orderHistory"></div>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
+                <a id="reorderBtn" class="btn btn-secondary" href="#" style="text-decoration: none;">
+                    <i class="fas fa-sync-alt"></i>
+                    Re-order
+                </a>
+                <a id="editSupplyBtn" class="btn" href="#" style="background: #e2e8f0; color: #475569; text-decoration: none;">
+                    <i class="fas fa-edit" style="color: #475569;"></i>
+                    Edit
+                </a>
                 <button type="button" class="btn" style="background: #e2e8f0; color: #475569;" data-modal="supplyModal">
                     Close
                 </button>
@@ -437,7 +516,7 @@
                     <td>
                         <div style="font-weight: 600; color: #1e293b;">{{ supply.current_count }}</div>
                         {% if supply.needs_restocking() %}
-                        <span class="badge badge-danger" style="margin-top: 4px; display: inline-block;">Low Stock</span>
+                        <span class="badge badge-warning" style="margin-top: 4px; display: inline-block;">Low Stock</span>
                         {% endif %}
                     </td>
                     <td>{{ supply.unit }}</td>
@@ -597,48 +676,81 @@
                                 statusDiv.innerHTML = '<span class="badge badge-success">In Stock</span>';
                             }
 
-                            // Populate order history
+                            // Set Re-order and Edit button links
+                            const reorderBtn = document.getElementById('reorderBtn');
+                            const editBtn = document.getElementById('editSupplyBtn');
+                            if (reorderBtn) reorderBtn.setAttribute('href', `/supplies/${supply.id}/reorder`);
+                            if (editBtn) editBtn.setAttribute('href', `/supplies/${supply.id}/edit`);
+
+                            // Populate order, delivered, and usage columns
                             const orderHistoryDiv = document.getElementById('orderHistory');
-                            orderHistoryDiv.innerHTML = '';
-
-                            const orders = data.inventory.filter(item => item.transaction_type === 'Order');
-                            if (orders.length > 0) {
-                                orders.forEach(order => {
-                                    const orderElement = document.createElement('div');
-                                    orderElement.style.cssText = 'padding: 12px; background: #f0fdf4; border-left: 4px solid #10b981; border-radius: 6px; margin-bottom: 12px;';
-                                    orderElement.innerHTML = `
-                                        <p style="font-weight: 600; color: #1e293b; margin: 0 0 6px 0;">Order #${order.id}</p>
-                                        <p style="color: #64748b; font-size: 0.85rem; margin: 0 0 4px 0;">${new Date(order.order_date).toLocaleDateString()}</p>
-                                        <p style="color: #475569; margin: 0 0 4px 0;">${order.quantity_ordered} ${supply.unit}</p>
-                                        ${order.vendor ? `<p style="color: #64748b; font-size: 0.85rem; margin: 0;">From: ${order.vendor.name}</p>` : ''}
-                                    `;
-                                    orderHistoryDiv.appendChild(orderElement);
-                                });
-                            } else {
-                                orderHistoryDiv.innerHTML = '<p style="color: #64748b; font-size: 0.9rem;">No order history</p>';
-                            }
-
-                            // Populate usage history
                             const usageHistoryDiv = document.getElementById('usageHistory');
+                            const deliveredHistoryDiv = document.getElementById('deliveredHistory');
+                            orderHistoryDiv.innerHTML = '';
                             usageHistoryDiv.innerHTML = '';
+                            deliveredHistoryDiv.innerHTML = '';
 
-                            const usages = data.inventory.filter(item => item.transaction_type === 'Stock Taken');
-                            if (usages.length > 0) {
-                                usages.forEach(usage => {
-                                    const usageElement = document.createElement('div');
-                                    usageElement.style.cssText = 'padding: 12px; background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 6px; margin-bottom: 12px;';
-                                    usageElement.innerHTML = `
-                                        <p style="font-weight: 600; color: #1e293b; margin: 0 0 6px 0;">Stock Taken</p>
-                                        <p style="color: #64748b; font-size: 0.85rem; margin: 0 0 4px 0;">${new Date(usage.taken_at).toLocaleDateString()}</p>
-                                        <p style="color: #475569; margin: 0 0 4px 0;">${usage.quantity_ordered} ${supply.unit}</p>
-                                        ${usage.taken_by_user ? `<p style="color: #64748b; font-size: 0.85rem; margin: 0 0 4px 0;">Taken by: ${usage.taken_by_user.full_name}</p>` : ''}
-                                        ${usage.reason ? `<p style="color: #64748b; font-size: 0.85rem; margin: 0; font-style: italic;">Reason: ${usage.reason}</p>` : ''}
+                            // Classify inventory items into columns based on transaction_type and status
+                            const items = data.inventory || [];
+                            items.forEach(item => {
+                                const t = item.transaction_type || '';
+                                const status = (item.status || '').toLowerCase();
+
+                                // Helper to map status to pill class
+                                const mapStatusToClass = (st) => {
+                                    if (!st) return 'pill-default';
+                                    if (st.includes('deliver')) return 'status-pill delivered';
+                                    if (st.includes('cancel') || st.includes('rejected')) return 'status-pill cancelled';
+                                    if (st.includes('pending') || st.includes('open')) return 'status-pill pending';
+                                    return 'pill-default';
+                                };
+
+                                // Determine target column
+                                let target = 'ordered';
+                                if (t === 'Adjustment' || t === 'Stock Taken') target = 'usage';
+                                else if (t === 'Order' && status.includes('deliver')) target = 'delivered';
+                                else if (t === 'Delivered' || t === 'Receipt') target = 'delivered';
+                                else target = 'ordered';
+
+                                // Build element common structure
+                                const el = document.createElement('div');
+                                el.className = 'item-card';
+                                const date = new Date(item.order_date || item.created_at || item.delivery_date || item.taken_at || Date.now()).toLocaleDateString();
+                                const qty = item.quantity_ordered || item.quantity || '';
+
+                                if (target === 'usage') {
+                                    el.innerHTML = `
+                                        <p class="item-title">${item.transaction_type}</p>
+                                        <p class="item-meta">${date}</p>
+                                        <p class="item-meta" style="margin-top:6px; color:#475569;">${qty} ${supply.unit}</p>
+                                        ${item.taken_by_user ? `<p style="color: #64748b; font-size: 0.85rem; margin: 0;">Taken by: ${item.taken_by_user.full_name}</p>` : ''}
+                                        ${item.reason ? `<p style="color: #64748b; font-size: 0.85rem; margin: 0; font-style: italic;">Reason: ${item.reason}</p>` : ''}
                                     `;
-                                    usageHistoryDiv.appendChild(usageElement);
-                                });
-                            } else {
-                                usageHistoryDiv.innerHTML = '<p style="color: #64748b; font-size: 0.9rem;">No usage history</p>';
-                            }
+                                    usageHistoryDiv.appendChild(el);
+                                } else if (target === 'delivered') {
+                                    el.innerHTML = `
+                                        <p class="item-title">${item.transaction_type === 'Order' ? `Order #${item.id || ''}` : item.transaction_type}</p>
+                                        <p class="item-meta">${date}</p>
+                                        <p class="item-meta" style="margin-top:6px; color:#475569;">${qty} ${supply.unit}</p>
+                                        ${item.vendor ? `<p style="color: #64748b; font-size: 0.85rem; margin: 0;">From: ${item.vendor.name}</p>` : ''}
+                                        
+                                    `;
+                                    deliveredHistoryDiv.appendChild(el);
+                                } else { // ordered
+                                    el.innerHTML = `
+                                        <p class="item-title">${item.transaction_type === 'Order' ? `Order #${item.id || ''}` : item.transaction_type}</p>
+                                        <p class="item-meta">${date}</p>
+                                        <p class="item-meta" style="margin-top:6px; color:#475569;">${qty} ${supply.unit}</p>
+                                        ${item.vendor ? `<p style="color: #64748b; font-size: 0.85rem; margin: 0;">From: ${item.vendor.name}</p>` : ''}
+                                        ${item.status ? `<div style="margin-top:8px;"><span class="${mapStatusToClass(status)}">${item.status}</span></div>` : ''}
+                                    `;
+                                    orderHistoryDiv.appendChild(el);
+                                }
+                            });
+
+                            if (orderHistoryDiv.children.length === 0) orderHistoryDiv.innerHTML = '<p style="color: #64748b; font-size: 0.9rem;">No order history</p>';
+                            if (deliveredHistoryDiv.children.length === 0) deliveredHistoryDiv.innerHTML = '<p style="color: #64748b; font-size: 0.9rem;">No deliveries</p>';
+                            if (usageHistoryDiv.children.length === 0) usageHistoryDiv.innerHTML = '<p style="color: #64748b; font-size: 0.9rem;">No usage history</p>';
 
                             openModal('supplyModal');
                         } else {
