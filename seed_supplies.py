@@ -15,7 +15,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from app import app, db, User, Supplies, Vendors, SupplyInventory
+from models import User, Supplies, Vendors, SupplyInventory
+from extensions import db
+from app import app
 
 # Fake vendor data
 VENDOR_DATA = [

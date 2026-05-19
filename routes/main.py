@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from app import db, User
+from extensions import db
+from models import User
 
 main_bp = Blueprint('main', __name__, url_prefix='/main', template_folder='/templates')
 
@@ -177,5 +178,4 @@ def get_cleaners():
         return jsonify(cleaners)
     except Exception as e:
         return jsonify({"status": "error", "message": f"Cleaner Pull Error: {str(e)}"}), 500
-
 
