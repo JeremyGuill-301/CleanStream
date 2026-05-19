@@ -1,9 +1,10 @@
 import os
 from dotenv import load_dotenv
 from flask import Flask, request, render_template, redirect, url_for, flash
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user
 from flask_migrate import Migrate
+from models import User, Appointment
+from extensions import db, login_manager, migrate
 
 
 # Define the Global Variable
@@ -24,17 +25,24 @@ app.config['SECRET_KEY'] = 'CleanStream_Sprint3_2026'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
-db = SQLAlchemy(app)
-login_manager = LoginManager(app)
+db.init_app(app)
+# Use the extension-managed LoginManager and Migrate instances so there's a single
+# SQLAlchemy / LoginManager object shared across the codebase.
+login_manager.init_app(app)
 login_manager.login_view = 'login_page'
 
-# Initialize Migration
-migrate = Migrate(app, db)
 
-# --- MODELS ---
-# Import all models
-from models import init_models
-User, CustomerContact, Appointment, Supplies, Vendors, SupplyInventory = init_models(db)
+# --- CREATE TABLES ---
+with app.app_context():
+    db.create_all()
+    print("Database connection established.")
+    print("Tables created successfully.")
+    print("----------------------------------------")
+    print("Server is ready to accept requests.")
+
+
+# Initialize Migration
+migrate.init_app(app, db)
 
 @login_manager.user_loader
 def load_user(user_id):
