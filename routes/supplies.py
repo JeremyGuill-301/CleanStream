@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import Supplies, SupplyInventory, Vendors, InventoryAudit
 from datetime import datetime
-from inventory_utils import (
+from utilities.inventory.inventory_utils import (
     validate_inventory_transaction,
     calculate_inventory_total,
     detect_discrepancies,
