@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}CleanStream - Schedule Visualizer{% endblock %}
+
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+
+<style>
+    .fc-theme-standard .fc-scrollgrid { border: 1px solid #e2e8f0 !important; border-radius: 8px !important; overflow: hidden; }
+    .fc .fc-col-header-cell { background: #1e293b !important; color: white !important; padding: 10px 0 !important; font-weight: 600; font-size: 0.9rem; }
+    .fc .fc-col-header-cell-cushion { color: white !important; text-decoration: none !important; }
+    .fc .fc-daygrid-day-number { color: #475569 !important; font-weight: 500; font-size: 0.95rem; padding: 8px !important; text-decoration: none !important; }
+    .fc-direction-ltr .fc-daygrid-event { border-radius: 4px !important; padding: 2px 6px !important; font-size: 0.85rem; font-weight: 500; }
+    .fc .fc-button-primary { background-color: #2563eb !important; border-color: #2563eb !important; transition: all 0.3s ease; }
+    .fc .fc-button-primary:hover { background-color: #1d4ed8 !important; border-color: #1d4ed8 !important; transform: translateY(-1px); }
+    .fc .fc-button-primary:disabled { background-color: #94a3b8 !important; border-color: #94a3b8 !important; opacity: 0.7; }
+    
+    .scheduler-container { max-width: 1200px; margin-bottom: 40px; }
+    .section-title { font-size: 1.875rem; font-weight: 700; color: #1e293b; margin-bottom: 30px; }
+    
+    .card-box { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 30px; }
+    .card-header-bar { padding: 20px; border-bottom: 1px solid #e2e8f0; background: white; }
+    .card-title { font-size: 1.25rem; font-weight: 600; color: #1e293b; margin: 0; }
+    
+    table { width: 100%; border-collapse: collapse; background: white; }
+    thead { background: #1e293b; color: white; }
+    th { padding: 14px 16px; text-align: left; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px; }
+    td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; font-size: 0.95rem; color: #475569; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #f8fafc; }
+    
+    .id-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; background: #f1f5f9; color: #2563eb; font-family: monospace; }
+</style>
+
+<div class="scheduler-container mx-auto">
+    <h1 class="section-title">Schedule Visualizer</h1>
+
+    <div class="card-box p-6 bg-white">
+        <div id="calendar"></div>
+    </div>
+
+    <div class="card-box">
+        <div class="card-header-bar flex items-center gap-2">
+            <i class="fas fa-users text-slate-500 text-lg"></i>
+            <h2 class="card-title">Available Cleaner Reference Grid</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table>
+                <thead>
+                    <tr>
+                        <th>System Cleaner Name</th>
+                        <th>Email Address</th>
+                        <th>Database ID</th>
+                    </tr>
+                </thead>
+                <tbody id="cleaners-table-body">
+                    <tr>
+                        <td colspan="3" class="px-6 py-4 text-center text-slate-400 italic">
+                            Loading active clean team records...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="appointmentModal" style="display: none;" class="fixed inset-0 z-50 bg-slate-900/40 items-center justify-center backdrop-blur-sm">
+    <div class="bg-white p-6 rounded-lg w-[450px] shadow-xl border border-slate-100">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                Schedule Appointment
+            </h3>
+            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
+        </div>
+        <form id="modalForm" class="space-y-4">
+            <input type="hidden" id="modal_date_tracker">
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Select Cleaner</label>
+                <select id="modal_user_id" required 
+                        class="w-full p-2.5 bg-white border border-slate-300 rounded-md outline-none focus:border-emerald-500 font-medium text-slate-700">
+                    <option value="" disabled selected>Loading available team members...</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Assigned Property / House</label>
+                <select id="modal_house_id" required 
+                        class="w-full p-2.5 bg-white border border-slate-300 rounded-md outline-none focus:border-emerald-500 font-medium text-slate-700">
+                    <option value="" disabled selected>Loading scheduled customer houses...</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Start Time (AM/PM)</label>
+                    <input type="time" id="modal_start_clock" required 
+                           class="w-full p-2.5 bg-white border border-slate-300 rounded-md font-medium outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">End Time (AM/PM)</label>
+                    <input type="time" id="modal_end_clock" required 
+                           class="w-full p-2.5 bg-white border border-slate-300 rounded-md font-medium outline-none focus:border-emerald-500">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-50 mt-4">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-md font-medium text-sm">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-emerald-500 text-white rounded-md font-medium text-sm shadow-sm hover:bg-emerald-600">
+                    Save Appointment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    if (!calendarEl) return;
+
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        height: 'auto',
+        events: "/main/api/calendar-data", 
+        dateClick: function(info) { openAppointmentModal(info.dateStr); },
+        
+        // ✨ NEW: Catches clicking actions on populated calendar boxes to trigger deletions!
+        eventClick: function(info) {
+            const appointmentTitle = info.event.title;
+            const appointmentId = info.event.id; // Pulled directly from your updated JSON payload
+
+            if (confirm(`Are you sure you want to cancel the scheduled cleaning appointment for: ${appointmentTitle}?`)) {
+                // Construct parameters targeting the specific primary key row index
+                const params = new URLSearchParams({ id: appointmentId });
+
+                fetch(`/main/api/delete-appointment?${params}`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Instantly drop the event from the display canvas layer dynamically
+                            info.event.remove();
+                        } else {
+                            alert('Server Error during deletion: ' + data.message);
+                        }
+                    })
+                    .catch(err => console.error("Network exception deleting appointment:", err));
+            }
+        }
+    });
+    calendar.render();
+    
+
+    // Fetch and sync active cleaners layout
+    fetch("/main/api/cleaners")
+        .then(res => res.json())
+        .then(cleaners => {
+            const tableBody = document.getElementById('cleaners-table-body');
+            const dropdownSelect = document.getElementById('modal_user_id');
+            
+            tableBody.innerHTML = ''; 
+            dropdownSelect.innerHTML = '<option value="" disabled selected>-- Select a Cleaner --</option>';
+            
+            if(!cleaners || cleaners.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="text-center italic py-4">No cleaners found</td></tr>`;
+                dropdownSelect.innerHTML = '<option value="" disabled>No active cleaners available</option>';
+                return;
+            }
+            cleaners.forEach(cleaner => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${cleaner.full_name}</strong></td>
+                    <td>${cleaner.email}</td>
+                    <td><span class="id-badge">${cleaner.id}</span></td>
+                `;
+                tableBody.appendChild(row);
+                
+                const option = document.createElement('option');
+                option.value = cleaner.id;
+                option.textContent = `[ID: ${cleaner.id}] ${cleaner.full_name}`;
+                dropdownSelect.appendChild(option);
+            });
+        }).catch(err => console.error("Error loading cleaners:", err));
+
+    // ✨ NEW: Temporary customer houses placeholder array for your demonstration.
+    // Once the customer table is active in MySQL, replace this block with a fetch() call.
+    const mockupHouses = [
+        { id: 1, name: "1042 Elm Street (Smith Residence)" },
+        { id: 2, name: "582 Oak Avenue (Miller Estate)" },
+        { id: 3, name: "904 Pine Road (Davis Luxury Rental)" },
+        { id: 4, name: "12 Pineberry Way (Jones Apartment)" }
+    ];
+    
+    const houseSelect = document.getElementById('modal_house_id');
+    houseSelect.innerHTML = '<option value="" disabled selected>-- Select a Property Location --</option>';
+    mockupHouses.forEach(house => {
+        const option = document.createElement('option');
+        option.value = house.name; // Pass text directly as the identifier value
+        option.textContent = house.name;
+        houseSelect.appendChild(option);
+    });
+
+    document.getElementById('modalForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Combine the calendar date string with the native clock choice values
+        const targetDate = document.getElementById('modal_date_tracker').value;
+        const startTimeValue = document.getElementById('modal_start_clock').value; // Returns "HH:MM" format
+        const endTimeValue = document.getElementById('modal_end_clock').value;     // Returns "HH:MM" format
+        
+        const finalStartTimestamp = `${targetDate} ${startTimeValue}:00`;
+        const finalEndTimestamp = `${targetDate} ${endTimeValue}:00`;
+
+        const params = new URLSearchParams({
+            user_id: document.getElementById('modal_user_id').value,
+            start_time: finalStartTimestamp,
+            end_time: finalEndTimestamp,
+            house: document.getElementById('modal_house_id').value // Send house detail text to the backend handler
+        });
+
+        fetch(`/main/api/make-appointment?${params}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    calendar.refetchEvents();
+                    closeModal();
+                } else {
+                    alert('Database Error: ' + data.message);
+                }
+            });
+    });
+});
+
+function openAppointmentModal(dateStr) {
+    document.getElementById('modalForm').reset();
+    
+    // Save the bare date string globally inside our hidden tracking node
+    document.getElementById('modal_date_tracker').value = dateStr;
+    
+    // Initialize standard placeholder values into the time selectors ("09:00" and "11:00")
+    document.getElementById('modal_start_clock').value = "09:00";
+    document.getElementById('modal_end_clock').value = "11:00";
+    
+    document.getElementById('appointmentModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('appointmentModal').style.display = 'none';
+}
+</script>
+{% endblock %}
