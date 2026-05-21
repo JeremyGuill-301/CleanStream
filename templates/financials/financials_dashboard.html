@@ -1,0 +1,834 @@
+{% extends 'base.html' %}
+
+{% block title %}Financial Dashboard - CleanStream{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/financials.css') }}">
+<script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+
+<div class="dashboard-container">
+    <!-- Header with Reports Dropdown -->
+    <div class="dashboard-header">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <h1>Financial Dashboard</h1>
+                <p>Real-time view of your business revenue and performance metrics</p>
+            </div>
+            
+            <!-- Reports Dropdown -->
+            <div class="reports-section">
+                <span class="reports-label">Reports:</span>
+                <div class="dropdown-container">
+                    <button class="dropdown-btn" id="reportsBtn">
+                        <i class="fas fa-chart-bar"></i> Select Report
+                    </button>
+                    <div class="dropdown-content" id="reportsDropdown">
+                        <div class="dropdown-item" onclick="showDashboard()">
+                            <i class="fas fa-home"></i> Dashboard
+                        </div>
+                        <div class="dropdown-item" onclick="showUnpaidJobsReport()">
+                            <i class="fas fa-exclamation-circle"></i> Unpaid Jobs Report
+                        </div>
+                        <div class="dropdown-item" onclick="showRevenueByCleanerReport()">
+                            <i class="fas fa-users"></i> Revenue by Cleaner
+                        </div>
+                        <div class="dropdown-item" onclick="showMonthlyRevenueReport()">
+                            <i class="fas fa-calendar-alt"></i> Monthly Revenue Breakdown
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Metrics Cards -->
+    <div class="metrics-row">
+        <div class="metric-card income">
+            <div class="metric-label">Total Paid Revenue</div>
+            <div class="metric-value" id="total-paid">$0.00</div>
+            <div class="metric-change positive">
+                <span id="this-week-paid">+$0.00</span> this week
+            </div>
+        </div>
+
+        <div class="metric-card unpaid">
+            <div class="metric-label">Unpaid (Finished Jobs)</div>
+            <div class="metric-value" id="total-unpaid">$0.00</div>
+            <div class="metric-change">
+                <span id="unpaid-count">0</span> jobs pending payment
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-label">This Month</div>
+            <div class="metric-value" id="month-paid">$0.00</div>
+            <div class="metric-change" id="month-change">
+                <span id="month-change-value">+$0.00</span> vs last month
+            </div>
+        </div>
+
+        <div class="metric-card balance">
+            <div class="metric-label">Month-over-Month</div>
+            <div class="metric-value" id="mom-percent">0%</div>
+            <div class="metric-change" id="mom-trend">
+                <span>Trend analysis</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-section">
+        <!-- Weekly Revenue Chart -->
+        <div class="chart-container">
+            <h3 class="chart-title">Weekly Revenue (12 Weeks)</h3>
+            <div class="chart-wrapper">
+                <canvas id="weeklyRevenueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Monthly Revenue Chart -->
+        <div class="chart-container">
+            <h3 class="chart-title">Monthly Revenue (12 Months)</h3>
+            <div class="chart-wrapper">
+                <canvas id="monthlyRevenueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Revenue vs Unpaid -->
+        <div class="chart-container">
+            <h3 class="chart-title">Paid vs Unpaid Revenue</h3>
+            <div class="chart-wrapper">
+                <canvas id="paidVsUnpaidChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Cleaner Performance -->
+        <div class="chart-container">
+            <h3 class="chart-title">Revenue by Cleaner</h3>
+            <div class="chart-wrapper">
+                <canvas id="cleanerPerformanceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Full Width: Utilization Rate -->
+        <div class="chart-container full-width">
+            <h3 class="chart-title">Cleaner Utilization Rate (This Month)</h3>
+            <div class="chart-wrapper">
+                <canvas id="utilizationChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transactions Table -->
+    <div class="table-container" id="dashboard-section">
+        <h3 class="table-title">Recent Transactions</h3>
+        <div id="transactions-loader" style="text-align: center; padding: 20px;">
+            <div class="loading"></div>
+            <p>Loading transactions...</p>
+        </div>
+        <table id="transactions-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Cleaner</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Paid Date</th>
+                </tr>
+            </thead>
+            <tbody id="transactions-body">
+            </tbody>
+        </table>
+        <div id="no-transactions" class="no-data" style="display: none;">
+            <p>No transactions available</p>
+        </div>
+    </div>
+
+    <!-- Unpaid Jobs Report Container -->
+    <div class="report-container" id="unpaid-report-section" style="display: none;">
+        <div class="report-title">
+            <i class="fas fa-exclamation-circle"></i> Unpaid Jobs Report
+            <button class="btn btn-secondary" style="margin-left: auto;" onclick="printReport()">
+                <i class="fas fa-print"></i> Print
+            </button>
+        </div>
+        <div id="report-content">
+            <div style="text-align: center; padding: 20px;">
+                <div class="loading"></div>
+                <p>Loading report...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revenue by Cleaner Report Container -->
+    <div class="report-container" id="cleaner-report-section" style="display: none;">
+        <div class="report-title">
+            <i class="fas fa-users"></i> Revenue by Cleaner Report
+            <button class="btn btn-secondary" style="margin-left: auto;" onclick="printReport()">
+                <i class="fas fa-print"></i> Print
+            </button>
+        </div>
+        <div id="cleaner-report-content">
+            <div style="text-align: center; padding: 20px;">
+                <div class="loading"></div>
+                <p>Loading report...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Revenue Breakdown Report Container -->
+    <div class="report-container" id="monthly-report-section" style="display: none;">
+        <div class="report-title">
+            <i class="fas fa-calendar-alt"></i> Monthly Revenue Breakdown
+            <button class="btn btn-secondary" style="margin-left: auto;" onclick="printReport()">
+                <i class="fas fa-print"></i> Print
+            </button>
+        </div>
+        <div id="monthly-report-content">
+            <div style="text-align: center; padding: 20px;">
+                <div class="loading"></div>
+                <p>Loading report...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Color scheme
+    const colors = {
+        primary: '#3498db',
+        success: '#27ae60',
+        warning: '#f39c12',
+        danger: '#e74c3c',
+        secondary: '#95a5a6'
+    };
+
+    // Chart instances
+    let charts = {
+        weekly: null,
+        monthly: null,
+        paidVsUnpaid: null,
+        cleaner: null,
+        utilization: null
+    };
+
+    // Initialize dashboard
+    async function initDashboard() {
+        try {
+            // Load summary data
+            const summaryRes = await fetch('/financials/api/dashboard-summary');
+            const summary = await summaryRes.json();
+            updateSummaryMetrics(summary);
+
+            // Load chart data
+            const weeklyRes = await fetch('/financials/api/revenue-by-week');
+            const weeklyData = await weeklyRes.json();
+            createWeeklyChart(weeklyData);
+
+            const monthlyRes = await fetch('/financials/api/revenue-by-month');
+            const monthlyData = await monthlyRes.json();
+            createMonthlyChart(monthlyData);
+
+            // Create pie chart
+            createPaidVsUnpaidChart(summary);
+
+            // Load cleaner performance
+            const performanceRes = await fetch('/financials/api/service-performance');
+            const performanceData = await performanceRes.json();
+            createCleanerPerformanceChart(performanceData);
+
+            // Load utilization
+            const utilizationRes = await fetch('/financials/api/utilization-rate');
+            const utilizationData = await utilizationRes.json();
+            createUtilizationChart(utilizationData);
+
+            // Load recent transactions
+            const transactionsRes = await fetch('/financials/api/recent-transactions');
+            const transactions = await transactionsRes.json();
+            populateTransactions(transactions);
+
+        } catch (error) {
+            console.error('Error loading dashboard:', error);
+        }
+    }
+
+    // Update summary metrics
+    function updateSummaryMetrics(summary) {
+        document.getElementById('total-paid').textContent = '$' + formatCurrency(summary.total_paid);
+        document.getElementById('total-unpaid').textContent = '$' + formatCurrency(summary.total_unpaid);
+        document.getElementById('month-paid').textContent = '$' + formatCurrency(summary.month_paid);
+        document.getElementById('this-week-paid').textContent = '+$' + formatCurrency(summary.week_paid);
+        
+        // Update month-over-month change
+        const changeElement = document.getElementById('month-change-value');
+        const changeContainer = document.getElementById('month-change');
+        const momValue = summary.mom_change;
+        
+        if (momValue >= 0) {
+            changeElement.textContent = '+$' + formatCurrency(Math.abs(momValue));
+            changeContainer.className = 'metric-change positive';
+        } else {
+            changeElement.textContent = '-$' + formatCurrency(Math.abs(momValue));
+            changeContainer.className = 'metric-change negative';
+        }
+        
+        // Update MOM percent
+        const momPercentElement = document.getElementById('mom-percent');
+        momPercentElement.textContent = Math.abs(summary.mom_percent) + '%';
+        
+        const momTrend = document.getElementById('mom-trend');
+        if (summary.mom_percent >= 0) {
+            momTrend.innerHTML = '<span style="color: #27ae60;">↑ Increasing</span>';
+        } else {
+            momTrend.innerHTML = '<span style="color: #e74c3c;">↓ Decreasing</span>';
+        }
+    }
+
+    // Create weekly revenue chart
+    function createWeeklyChart(data) {
+        const ctx = document.getElementById('weeklyRevenueChart').getContext('2d');
+        
+        charts.weekly = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d.week),
+                datasets: [{
+                    label: 'Revenue',
+                    data: data.map(d => d.revenue),
+                    backgroundColor: colors.primary,
+                    borderColor: colors.primary,
+                    borderWidth: 0,
+                    borderRadius: 4,
+                    hoverBackgroundColor: '#2980b9'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: function(value) { return '$' + formatCurrency(value); } }
+                    }
+                }
+            }
+        });
+    }
+
+    // Create monthly revenue chart
+    function createMonthlyChart(data) {
+        const ctx = document.getElementById('monthlyRevenueChart').getContext('2d');
+        
+        charts.monthly = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.month),
+                datasets: [{
+                    label: 'Monthly Revenue',
+                    data: data.map(d => d.revenue),
+                    borderColor: colors.success,
+                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointBackgroundColor: colors.success,
+                    pointHoverRadius: 7,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: function(value) { return '$' + formatCurrency(value); } }
+                    }
+                }
+            }
+        });
+    }
+
+    // Create paid vs unpaid chart
+    function createPaidVsUnpaidChart(summary) {
+        const ctx = document.getElementById('paidVsUnpaidChart').getContext('2d');
+        
+        charts.paidVsUnpaid = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Paid', 'Unpaid'],
+                datasets: [{
+                    data: [summary.total_paid, summary.total_unpaid],
+                    backgroundColor: [colors.success, colors.warning],
+                    borderColor: ['#fff', '#fff'],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+
+    // Create cleaner performance chart
+    function createCleanerPerformanceChart(data) {
+        if (data.length === 0) return;
+        
+        const ctx = document.getElementById('cleanerPerformanceChart').getContext('2d');
+        const cleanerNames = data.map(d => d.cleaner);
+        const revenues = data.map(d => d.total_revenue);
+        
+        charts.cleaner = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: cleanerNames,
+                datasets: [{
+                    label: 'Total Revenue',
+                    data: revenues,
+                    backgroundColor: colors.primary,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: { callback: function(value) { return '$' + formatCurrency(value); } }
+                    }
+                }
+            }
+        });
+    }
+
+    // Create utilization chart
+    function createUtilizationChart(data) {
+        if (data.length === 0) return;
+        
+        const ctx = document.getElementById('utilizationChart').getContext('2d');
+        const cleanerNames = data.map(d => d.cleaner);
+        const utilization = data.map(d => d.utilization);
+        
+        charts.utilization = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: cleanerNames,
+                datasets: [{
+                    label: 'Utilization %',
+                    data: utilization,
+                    backgroundColor: colors.primary,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: { callback: function(value) { return value + '%'; } }
+                    }
+                }
+            }
+        });
+    }
+
+    // Populate transactions table
+    function populateTransactions(transactions) {
+        const tbody = document.getElementById('transactions-body');
+        const table = document.getElementById('transactions-table');
+        const loader = document.getElementById('transactions-loader');
+        const noData = document.getElementById('no-transactions');
+        
+        loader.style.display = 'none';
+        
+        if (transactions.length === 0) {
+            noData.style.display = 'block';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        transactions.forEach(tx => {
+            const row = document.createElement('tr');
+            const statusClass = tx.status === 'Paid' ? 'status-paid' : 'status-unpaid';
+            
+            row.innerHTML = `
+                <td>${tx.date}</td>
+                <td>${tx.cleaner}</td>
+                <td>$${formatCurrency(tx.amount)}</td>
+                <td><span class="status-badge ${statusClass}">${tx.status}</span></td>
+                <td>${tx.paid_date || '—'}</td>
+            `;
+            tbody.appendChild(row);
+        });
+        
+        table.style.display = 'table';
+    }
+
+    // Helper function to format currency
+    function formatCurrency(value) {
+        return parseFloat(value).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    // Dropdown functionality
+    const reportsBtn = document.getElementById('reportsBtn');
+    const reportsDropdown = document.getElementById('reportsDropdown');
+
+    reportsBtn.addEventListener('click', function() {
+        reportsDropdown.classList.toggle('show');
+        reportsBtn.classList.toggle('active');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.dropdown-container')) {
+            reportsDropdown.classList.remove('show');
+            reportsBtn.classList.remove('active');
+        }
+    });
+
+    // Show Dashboard
+    function showDashboard() {
+        document.getElementById('dashboard-section').style.display = 'block';
+        document.getElementById('unpaid-report-section').style.display = 'none';
+        document.getElementById('cleaner-report-section').style.display = 'none';
+        document.getElementById('monthly-report-section').style.display = 'none';
+        
+        // Scroll to charts
+        document.querySelector('.charts-section').scrollIntoView({ behavior: 'smooth' });
+        
+        reportsDropdown.classList.remove('show');
+        reportsBtn.classList.remove('active');
+    }
+
+    // Show Unpaid Jobs Report
+    async function showUnpaidJobsReport() {
+        document.getElementById('dashboard-section').style.display = 'none';
+        document.getElementById('unpaid-report-section').style.display = 'block';
+        
+        try {
+            const response = await fetch('/financials/api/unpaid-jobs-report');
+            const report = await response.json();
+            displayUnpaidJobsReport(report);
+        } catch (error) {
+            console.error('Error loading report:', error);
+            document.getElementById('report-content').innerHTML = '<div class="empty-report"><p>Error loading report</p></div>';
+        }
+        
+        reportsDropdown.classList.remove('show');
+        reportsBtn.classList.remove('active');
+        
+        // Scroll to report
+        document.getElementById('unpaid-report-section').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Display Unpaid Jobs Report
+    function displayUnpaidJobsReport(report) {
+        const reportContent = document.getElementById('report-content');
+        
+        if (report.groups.length === 0) {
+            reportContent.innerHTML = '<div class="empty-report"><p>No unpaid jobs found</p></div>';
+            return;
+        }
+
+        let html = '<div class="report-stats">';
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Total Unpaid Jobs</div>
+            <div class="report-stat-value">${report.summary.total_jobs}</div>
+        </div>`;
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Total Amount Due</div>
+            <div class="report-stat-value">$${formatCurrency(report.summary.total_amount)}</div>
+        </div>`;
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Average Days Late</div>
+            <div class="report-stat-value">${report.summary.average_days_late}</div>
+        </div>`;
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Most Critical</div>
+            <div class="report-stat-value">${report.summary.most_critical_group}</div>
+        </div>`;
+        html += '</div>';
+
+        // Add grouped jobs
+        report.groups.forEach(group => {
+            html += `<div class="report-group">
+                <div class="report-group-title">
+                    <span>${group.group_name}</span>
+                    <span class="group-count">${group.jobs.length} jobs</span>
+                </div>`;
+            
+            group.jobs.forEach(job => {
+                html += `<div class="report-item">
+                    <div class="report-item-date">${job.scheduled_date}</div>
+                    <div class="report-item-header">
+                        <div class="report-item-cleaner">${job.cleaner_name}</div>
+                        <div class="report-item-amount">$${formatCurrency(job.cost)}</div>
+                    </div>
+                    <div class="report-item-details">
+                        <strong>${job.days_late} days late</strong> • Finished: ${job.finished_date}
+                    </div>
+                </div>`;
+            });
+            
+            html += '</div>';
+        });
+
+        reportContent.innerHTML = html;
+    }
+
+    // Show Revenue by Cleaner Report
+    async function showRevenueByCleanerReport() {
+        document.getElementById('dashboard-section').style.display = 'none';
+        document.getElementById('unpaid-report-section').style.display = 'none';
+        document.getElementById('cleaner-report-section').style.display = 'block';
+        document.getElementById('monthly-report-section').style.display = 'none';
+        
+        try {
+            const response = await fetch('/financials/api/revenue-by-cleaner');
+            const report = await response.json();
+            displayRevenueByCleanerReport(report);
+        } catch (error) {
+            console.error('Error loading report:', error);
+            document.getElementById('cleaner-report-content').innerHTML = '<div class="empty-report"><p>Error loading report</p></div>';
+        }
+        
+        reportsDropdown.classList.remove('show');
+        reportsBtn.classList.remove('active');
+        
+        document.getElementById('cleaner-report-section').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Display Revenue by Cleaner Report
+    function displayRevenueByCleanerReport(report) {
+        const content = document.getElementById('cleaner-report-content');
+        
+        if (!report.cleaners || report.cleaners.length === 0) {
+            content.innerHTML = '<div class="empty-report"><p>No cleaner data available</p></div>';
+            return;
+        }
+
+        let html = '<div class="report-stats">';
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Total Cleaners</div>
+            <div class="report-stat-value">${report.summary.total_cleaners}</div>
+        </div>`;
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Total Revenue</div>
+            <div class="report-stat-value">$${formatCurrency(report.summary.total_revenue)}</div>
+        </div>`;
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Paid Revenue</div>
+            <div class="report-stat-value" style="color: #27ae60;">$${formatCurrency(report.summary.total_paid_revenue)}</div>
+        </div>`;
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Unpaid Revenue</div>
+            <div class="report-stat-value" style="color: #e74c3c;">$${formatCurrency(report.summary.total_unpaid_revenue)}</div>
+        </div>`;
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Collection Rate</div>
+            <div class="report-stat-value">${report.summary.overall_collection_rate}%</div>
+        </div>`;
+        html += '</div>';
+
+        html += '<div class="cleaner-table-container">';
+        html += '<table class="cleaner-table">';
+        html += '<thead><tr>';
+        html += '<th>Cleaner</th>';
+        html += '<th>Total Jobs</th>';
+        html += '<th>Paid</th>';
+        html += '<th>Unpaid</th>';
+        html += '<th>Total Revenue</th>';
+        html += '<th>Avg Job</th>';
+        html += '<th>Revenue %</th>';
+        html += '<th>Collection %</th>';
+        html += '<th>Last 30 Days</th>';
+        html += '</tr></thead><tbody>';
+
+        report.cleaners.forEach(cleaner => {
+            if (cleaner.total_jobs === 0) return;
+            
+            html += '<tr>';
+            html += `<td><strong>${cleaner.name}</strong></td>`;
+            html += `<td>${cleaner.total_jobs}</td>`;
+            html += `<td style="color: #27ae60;">${cleaner.paid_jobs}</td>`;
+            html += `<td style="color: #e74c3c;">${cleaner.unpaid_jobs}</td>`;
+            html += `<td><strong>$${formatCurrency(cleaner.total_revenue)}</strong></td>`;
+            html += `<td>$${formatCurrency(cleaner.avg_job_value)}</td>`;
+            html += `<td>${cleaner.revenue_percent}%</td>`;
+            html += `<td>${cleaner.collection_rate}%</td>`;
+            html += `<td>$${formatCurrency(cleaner.last_30_days_revenue)} (${cleaner.last_30_days_jobs} jobs)</td>`;
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        content.innerHTML = html;
+    }
+
+    // Show Monthly Revenue Breakdown Report
+    async function showMonthlyRevenueReport() {
+        document.getElementById('dashboard-section').style.display = 'none';
+        document.getElementById('unpaid-report-section').style.display = 'none';
+        document.getElementById('cleaner-report-section').style.display = 'none';
+        document.getElementById('monthly-report-section').style.display = 'block';
+        
+        try {
+            const response = await fetch('/financials/api/monthly-revenue-breakdown');
+            const report = await response.json();
+            displayMonthlyRevenueReport(report);
+        } catch (error) {
+            console.error('Error loading report:', error);
+            document.getElementById('monthly-report-content').innerHTML = '<div class="empty-report"><p>Error loading report</p></div>';
+        }
+        
+        reportsDropdown.classList.remove('show');
+        reportsBtn.classList.remove('active');
+        
+        document.getElementById('monthly-report-section').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Display Monthly Revenue Breakdown Report
+    function displayMonthlyRevenueReport(report) {
+        const content = document.getElementById('monthly-report-content');
+        
+        if (!report.months || report.months.length === 0) {
+            content.innerHTML = '<div class="empty-report"><p>No monthly data available</p></div>';
+            return;
+        }
+
+        let html = '<div class="report-stats">';
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Total Revenue</div>
+            <div class="report-stat-value">$${formatCurrency(report.summary.total_revenue)}</div>
+        </div>`;
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Avg Monthly</div>
+            <div class="report-stat-value">$${formatCurrency(report.summary.average_monthly_revenue)}</div>
+        </div>`;
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Best Month</div>
+            <div class="report-stat-value" style="color: #27ae60;">${report.summary.best_month}</div>
+        </div>`;
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Worst Month</div>
+            <div class="report-stat-value" style="color: #e74c3c;">${report.summary.worst_month}</div>
+        </div>`;
+        html += `<div class="report-stat">
+            <div class="report-stat-label">Total Jobs</div>
+            <div class="report-stat-value">${report.summary.total_jobs}</div>
+        </div>`;
+        html += '</div>';
+
+        html += '<div class="monthly-table-container">';
+        html += '<table class="monthly-table">';
+        html += '<thead><tr>';
+        html += '<th>Month</th>';
+        html += '<th>Total Jobs</th>';
+        html += '<th>Paid Jobs</th>';
+        html += '<th>Unpaid Jobs</th>';
+        html += '<th>Paid Revenue</th>';
+        html += '<th>Unpaid Revenue</th>';
+        html += '<th>Total Revenue</th>';
+        html += '<th>MoM Change</th>';
+        html += '<th>MoM %</th>';
+        html += '</tr></thead><tbody>';
+
+        report.months.forEach(month => {
+            const momClass = month.mom_change >= 0 ? 'positive' : 'negative';
+            const momIcon = month.mom_change >= 0 ? '↑' : '↓';
+            
+            html += '<tr>';
+            html += `<td><strong>${month.month} ${month.year}</strong></td>`;
+            html += `<td>${month.total_jobs}</td>`;
+            html += `<td style="color: #27ae60;">${month.paid_jobs}</td>`;
+            html += `<td style="color: #e74c3c;">${month.unpaid_jobs}</td>`;
+            html += `<td style="color: #27ae60;">$${formatCurrency(month.paid_revenue)}</td>`;
+            html += `<td style="color: #e74c3c;">$${formatCurrency(month.unpaid_revenue)}</td>`;
+            html += `<td><strong>$${formatCurrency(month.total_revenue)}</strong></td>`;
+            html += `<td class="${momClass}">${momIcon} $${formatCurrency(Math.abs(month.mom_change))}</td>`;
+            html += `<td class="${momClass}">${month.mom_percent >= 0 ? '+' : ''}${month.mom_percent}%</td>`;
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        content.innerHTML = html;
+    }
+
+     // Print Report
+     function printReport() {
+         const header = document.createElement('div');
+         header.className = 'print-header';
+         header.style.display = 'block';
+         
+         const footer = document.createElement('div');
+         footer.className = 'print-footer';
+         footer.style.display = 'block';
+         
+         const now = new Date();
+         const timestamp = now.toLocaleDateString('en-US', { 
+             year: 'numeric', 
+             month: 'long', 
+             day: 'numeric',
+             hour: '2-digit',
+             minute: '2-digit'
+         });
+         
+         let reportTitle = 'Financial Dashboard';
+         const dashboardVisible = document.getElementById('dashboard-section').style.display !== 'none';
+         const unpaidVisible = document.getElementById('unpaid-report-section').style.display !== 'none';
+         const cleanerVisible = document.getElementById('cleaner-report-section').style.display !== 'none';
+         const monthlyVisible = document.getElementById('monthly-report-section').style.display !== 'none';
+         
+         if (unpaidVisible) reportTitle = 'Unpaid Jobs Report';
+         else if (cleanerVisible) reportTitle = 'Revenue by Cleaner Report';
+         else if (monthlyVisible) reportTitle = 'Monthly Revenue Breakdown';
+         
+         header.innerHTML = `<div class="print-header-content"><h1>${reportTitle}</h1><p>CleanStream Financial Report | Generated: ${timestamp}</p></div>`;
+         footer.innerHTML = `CleanStream - ${reportTitle} | Printed: ${timestamp}`;
+         
+         // Ensure report containers are visible for printing
+         const reportContainer = document.querySelector('.report-container[style*="display: block"]');
+         if (reportContainer) {
+             reportContainer.style.setProperty('display', 'block', 'important');
+         }
+         
+         document.body.insertBefore(header, document.body.firstChild);
+         document.body.appendChild(footer);
+         
+         // Use setTimeout to ensure DOM is ready before printing
+         setTimeout(() => {
+             window.print();
+             
+             // Remove header/footer after print dialog closes
+             setTimeout(() => {
+                 if (header.parentNode) document.body.removeChild(header);
+                 if (footer.parentNode) document.body.removeChild(footer);
+             }, 500);
+         }, 100);
+     }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', initDashboard);
+</script>
+{% endblock %}

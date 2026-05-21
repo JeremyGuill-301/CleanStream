@@ -195,6 +195,12 @@
                         Supplies
                     </a>
                 {% endif %}
+                {% if current_user.role == 'BusinessOwner' %}
+                    <a href="{{ url_for('financials.dashboard') }}" title="Financials">
+                        <i class="fas fa-shield-alt" style="width: 18px;"></i>
+                        Financials
+                    </a>
+                {% endif %}
             {% else %}
                 <a href="/auth/login" title="Sign in to your account">
                     <i class="fas fa-sign-in-alt" style="width: 18px;"></i>
