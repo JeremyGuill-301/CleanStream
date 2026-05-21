@@ -24,6 +24,20 @@ class User(UserMixin, db.Model):
 class CustomerContact(db.Model):
     __tablename__ = 'customer_contacts'
     customer_id = db.Column(db.Integer, primary_key=True)
+    first_name = db.Column(db.String(100), nullable=False)
+    last_name = db.Column(db.String(100), nullable=False)
+    property_nickname = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True)
+    phone = db.Column(db.String(20))
+    address = db.Column(db.String(200))
+    city = db.Column(db.String(100))
+    state = db.Column(db.String(2))
+    zip_code = db.Column(db.String(10))
+    created_at = db.Column(db.DateTime, server_default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, server_default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    #--- RELATIONSHIPS ---
+    appointments = db.relationship("Appointment", back_populates="customer")
 
 class Appointment(db.Model):
     __tablename__ = 'appointments'
@@ -37,6 +51,10 @@ class Appointment(db.Model):
     paid_date = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, server_default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    #--- RELATIONSHIPS ---
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer_contacts.customer_id'), nullable=False)
+    customer = db.relationship("CustomerContact", back_populates="appointments")
 
 class Supplies(db.Model):
     __tablename__ = 'supplies'

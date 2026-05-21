@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Customers - CleanStream{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-3xl font-bold text-gray-900">Customers</h1>
+    <span class="text-sm text-gray-500 bg-white px-4 py-2 rounded-lg shadow-sm">{{ cust_count }} total</span>
+  </div>
+
+  {% if customers %}
+    <div class="space-y-4">
+      {% for customer in customers %}
+        {% set cid = customer.customer_id %}
+        {% set border = 'border-l-gray-300' %}
+        {% if cust_has_future.get(cid) %}
+          {% set border = 'border-l-green-500' %}
+        {% elif cust_has_recent.get(cid) %}
+          {% set border = 'border-l-yellow-500' %}
+        {% endif %}
+
+        <div class="bg-white rounded-lg shadow border-l-4 {{ border }} hover:shadow-md transition-shadow">
+          <div class="grid grid-cols-12 gap-4 p-5">
+
+            <!-- SECTION 1: Name, Phone, Email -->
+            <div class="col-span-4 flex flex-col justify-center">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-lg font-semibold text-gray-900">{{ customer.first_name }} {{ customer.last_name }}</span>
+                {% if cust_has_future.get(cid) %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <i class="fas fa-calendar-check mr-1"></i> Active
+                  </span>
+                {% elif cust_has_recent.get(cid) %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    <i class="fas fa-clock mr-1"></i> Recent
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                    <i class="fas fa-pause mr-1"></i> Inactive
+                  </span>
+                {% endif %}
+              </div>
+              <div class="flex items-center text-sm text-gray-600 mt-1">
+                <i class="fas fa-phone-alt w-4 text-gray-400 mr-2"></i>
+                {{ customer.phone or 'N/A' }}
+              </div>
+              <div class="flex items-center text-sm text-gray-600 mt-1">
+                <i class="fas fa-envelope w-4 text-gray-400 mr-2"></i>
+                {{ customer.email or 'N/A' }}
+              </div>
+            </div>
+
+            <!-- SECTION 2: Property Nickname, Address -->
+            <div class="col-span-5 flex flex-col justify-center border-l border-gray-100 pl-5">
+              <div class="flex items-center text-base font-medium text-gray-800 mb-1">
+                <i class="fas fa-home text-sparkle-500 mr-2"></i>
+                {{ customer.property_nickname }}
+              </div>
+              <div class="text-sm text-gray-600 mt-1 ml-6">
+                {{ customer.address }}{% if customer.address and customer.city %}, {% endif %}
+                {% if customer.city %}{{ customer.city }}, {% endif %}
+                {{ customer.state or '' }} {{ customer.zip_code or '' }}
+              </div>
+            </div>
+
+            <!-- SECTION 3: Revenue & Outstanding -->
+            <div class="col-span-3 flex flex-col justify-center border-l border-gray-100 pl-5">
+              <div class="text-sm text-gray-500 uppercase tracking-wider text-xs">Revenue</div>
+              <div class="text-lg font-bold text-green-600">
+                ${{ "%.2f"|format(cust_revenue.get(cid, 0)) }}
+              </div>
+              {% set outstanding = cust_outstanding.get(cid, 0) %}
+              {% if outstanding > 0 %}
+                <div class="mt-1">
+                  <span class="text-sm font-semibold text-red-600">
+                    ${{ "%.2f"|format(outstanding) }}
+                  </span>
+                  <span class="text-xs text-red-500">
+                    overdue
+                    {% set days = cust_overdue_days.get(cid, 0) %}
+                    ({{ days }} day{% if days != 1 %}s{% endif %})
+                  </span>
+                </div>
+              {% else %}
+                <div class="text-xs text-gray-400 mt-1">No outstanding balance</div>
+              {% endif %}
+            </div>
+
+          </div>
+
+          <!-- Footer: Appointment stats -->
+          <div class="flex items-center gap-6 px-5 py-3 bg-gray-50 rounded-b-lg border-t border-gray-100 text-xs text-gray-500">
+            <div>
+              <i class="fas fa-broom mr-1"></i>
+              <strong>{{ cust_total_apts.get(cid, 0) }}</strong> total
+            </div>
+            {% set last_date = cust_last_apt.get(cid) %}
+            {% if last_date %}
+              <div>
+                <i class="fas fa-history mr-1"></i>
+                Last: {{ last_date.strftime('%b %d, %Y') }}
+              </div>
+            {% endif %}
+            {% set next_date = cust_next_apt.get(cid) %}
+            {% if next_date %}
+              <div>
+                <i class="fas fa-arrow-right mr-1 text-green-500"></i>
+                Next: {{ next_date.strftime('%b %d, %Y') }}
+              </div>
+            {% endif %}
+          </div>
+
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="bg-white rounded-lg shadow p-12 text-center">
+      <i class="fas fa-users text-4xl text-gray-300 mb-4"></i>
+      <p class="text-gray-500 text-lg">No customers yet.</p>
+      <p class="text-sm text-gray-400 mt-2">Start by creating your first customer record.</p>
+    </div>
+  {% endif %}
+</div>
+
+<div class="mt-6 text-center text-xs text-gray-400">
+  <span class="inline-flex items-center gap-4">
+    <span><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span> Active & booked</span>
+    <span><span class="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-1"></span> Recent visit, no future bookings</span>
+    <span><span class="inline-block w-3 h-3 rounded-full bg-gray-300 mr-1"></span> No recent activity</span>
+  </span>
+</div>
+{% endblock %}
