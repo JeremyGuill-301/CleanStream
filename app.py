@@ -1,4 +1,5 @@
 import os
+from datetime import date, datetime, timedelta, time
 from dotenv import load_dotenv
 from flask import Flask, request, render_template, redirect, url_for, flash
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user
@@ -53,11 +54,13 @@ from routes.main import main_bp
 from routes.supplies import supply_bp
 from routes.admin import admin_bp
 from routes.financials import financials_bp
+from routes.customers import customer_bp
 
 app.register_blueprint(main_bp)
 app.register_blueprint(supply_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(financials_bp)
+app.register_blueprint(customer_bp)
 
 # --- ROUTES ---
 @app.route('/')
@@ -114,20 +117,45 @@ def add_employee():
         flash(f'Error: {str(e)}')
     return redirect(url_for('dashboard'))
 
-@app.route('/mobile')
+@app.route('/mobile/', defaults={'date_str': None})
+@app.route('/mobile/<date_str>')
 @login_required
-def mobile_view():
+def mobile_view(date_str):
     if current_user.role != 'Cleaner':
         return redirect(url_for('dashboard'))
-    # Daily Agenda for cleaners
-    agenda = Appointment.query.filter_by(cleaner_id=current_user.id).all()
-    return render_template('mobile/agenda.html', agenda=agenda)
+
+    if date_str:
+        try:
+            current_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            current_date = date.today()
+    else:
+        current_date = date.today()
+
+    start_of_day = datetime.combine(current_date, time.min)
+    end_of_day = datetime.combine(current_date, time.max)
+
+    agenda = Appointment.query.filter(
+        Appointment.cleaner_id == current_user.id,
+        Appointment.scheduled_time >= start_of_day,
+        Appointment.scheduled_time <= end_of_day
+    ).all()
+
+    prev_date = current_date - timedelta(days=1)
+    next_date = current_date + timedelta(days=1)
+
+    return render_template('mobile/agenda.html',
+                           agenda=agenda,
+                           current_date=current_date,
+                           prev_date=prev_date,
+                           next_date=next_date,
+                           today=date.today())
 
 @app.route('/update_status/<int:apt_id>', methods=['POST'])
 @login_required
 def update_status(apt_id):
     appointment = Appointment.query.get_or_404(apt_id)
-    if appointment.cleaner_id == current_user.id:
+    if appointment.cleaner_id == current_user.id and appointment.scheduled_time.date() == date.today():
         appointment.status = request.form.get('status')
         db.session.commit()
     return redirect(url_for('mobile_view'))

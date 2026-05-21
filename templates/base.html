@@ -186,6 +186,10 @@
         	</a>
 
                 {% if current_user.role == 'OfficeAdmin' or current_user.role == 'BusinessOwner' %}
+                    <a href="{{ url_for('customer.supplies_index') }}" title="View customers">
+                        <i class="fas fa-users" style="width: 18px;"></i>
+                        Customers
+                    </a>
                     <a href="{{ url_for('admin.index') }}" title="Admin panel">
                         <i class="fas fa-shield-alt" style="width: 18px;"></i>
                         Admin
@@ -211,11 +215,11 @@
 
         <div class="sidebar-footer">
             {% if current_user.is_authenticated %}
-                <a href="/dashboard/profile" title="View your profile">
+                <a href="{{ url_for("main.profile") }}" title="View your profile">
                     <i class="fas fa-user-circle" style="width: 18px;"></i>
                     Profile
                 </a>
-                <a href="/auth/logout" class="logout" title="Sign out of your account">
+                <a href="{{ url_for("logout") }}" class="logout" title="Sign out of your account">
                     <i class="fas fa-sign-out-alt" style="width: 18px;"></i>
                     Logout
                 </a>
