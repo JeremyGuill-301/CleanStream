@@ -52,10 +52,12 @@ def load_user(user_id):
 from routes.main import main_bp
 from routes.supplies import supply_bp
 from routes.admin import admin_bp
+from routes.financials import financials_bp
 
 app.register_blueprint(main_bp)
 app.register_blueprint(supply_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(financials_bp)
 
 # --- ROUTES ---
 @app.route('/')
@@ -137,4 +139,4 @@ def logout():
     return redirect(url_for('login_page'))
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5002)

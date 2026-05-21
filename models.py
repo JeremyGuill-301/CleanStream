@@ -29,10 +29,14 @@ class Appointment(db.Model):
     __tablename__ = 'appointments'
     apt_id = db.Column(db.Integer, primary_key=True)
     cleaner_id = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.Enum('Pending', 'In Progress', 'Finished', 'Busy', 'Cancelled'), default='Pending')
+    status = db.Column(db.Enum('Pending', 'In Progress', 'Finished', 'Paid', 'Busy', 'Cancelled'), default='Pending')
     scheduled_time = db.Column(db.DateTime)
     end_time = db.Column(db.DateTime)
     service_notes = db.Column(db.Text)
+    cost = db.Column(db.Numeric(10, 2), nullable=True)
+    paid_date = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, server_default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
 class Supplies(db.Model):
     __tablename__ = 'supplies'
