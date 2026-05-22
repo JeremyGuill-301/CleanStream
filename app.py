@@ -21,7 +21,7 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
 # --- CONFIGURATION ---
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://admin:CleanStream475%23@35.171.82.228/cleanstream_db?charset=utf8mb4'
 app.config['SECRET_KEY'] = 'CleanStream_Sprint3_2026'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
