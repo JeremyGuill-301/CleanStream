@@ -35,6 +35,8 @@ migrate = Migrate(app, db)
 # Import all models
 from models import init_models
 User, CustomerContact, Appointment, Supplies, Vendors, SupplyInventory = init_models(db)
+# --- I4TP-29 TRACKING FLAG ATTRIBUTE ---
+Appointment.reminder_sent = db.Column(db.Boolean, default=False, nullable=False)
 
 @login_manager.user_loader
 def load_user(user_id):
