@@ -22,7 +22,7 @@
     <div class="card">
         <h3>Today's Job</h3>
         <p id="status">Status: Pending</p>
-        <button onclick="markFinished(123)" style="background:#002366; color:white; border-radius:15px; width:100%; padding:10px;">Mark Finished</button>
+        <button onclick="markFinished(123)" style="background:#002366; color:white; border-radius:15px; width:100%; padding:10px;">Finished Job</button>
     </div>
 
     <h3 style="color:#002366;">Weekly Schedule</h3>
@@ -35,6 +35,7 @@
                 alert("Updated!");
             });
         }
+        
         fetch(`/api/weekly_schedule/{{ user.id }}`).then(res => res.json()).then(data => {
             document.getElementById('weekly-schedule').innerHTML = data.map(i => `
                 <div class="schedule-item"><span>${i.time.split(' ')[0]}</span><span>${i.status}</span></div>

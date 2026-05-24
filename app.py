@@ -1,7 +1,7 @@
 import os
 from datetime import date, datetime, timedelta, time
 from dotenv import load_dotenv
-from flask import Flask, request, render_template, redirect, url_for, flash
+from flask import Flask, request, render_template, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user
 from flask_migrate import Migrate
 from models import User, Appointment
@@ -85,6 +85,24 @@ def login_page():
         flash('Invalid credentials')
     return render_template('auth/login.html')
 
+@app.route('/appointments/<int:id>/start', methods=['POST'])
+@login_required
+def start_appointment(id):
+
+    appointment = Appointment.query.get(id)
+
+    if not appointment:
+        return jsonify({"error": "Appointment not found"}), 404
+
+    appointment.status = "In Progress"
+    appointment.actual_start_time = datetime.utcnow()
+
+    db.session.commit()
+
+    return jsonify({
+        "message": "Appointment started successfully"
+    }), 200
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -155,10 +173,19 @@ def mobile_view(date_str):
 @login_required
 def update_status(apt_id):
     appointment = Appointment.query.get_or_404(apt_id)
-    if appointment.cleaner_id == current_user.id and appointment.scheduled_time.date() == date.today():
-        appointment.status = request.form.get('status')
-        db.session.commit()
-    return redirect(url_for('mobile_view'))
+    if appointment.cleaner_id == current_user.id:
+       new_status = request.form.get('status')
+       appointment.status = new_status
+    
+       if new_status == "In Progress" and not appointment.actual_start_time:
+          appointment.actual_start_time = datetime.utcnow()
+
+       db.session.commit()
+
+    return redirect(url_for(
+        'mobile_view',
+        date_str=appointment.scheduled_time.date()
+    ))
 
 @app.route('/logout')
 @login_required

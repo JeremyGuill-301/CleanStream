@@ -107,7 +107,7 @@
     <div class="container">
         {% if agenda %}
             {% for job in agenda %}
-            <div class="job-card{% if job.scheduled_time.date() != today %} disabled{% endif %}">
+            <div class="job-card">
                 <div class="job-card-top">
                     <span class="job-title">Job #{{ job.apt_id }}</span>
                     <span class="status-badge status-{{ job.status.replace(' ', '-') }}">{{ job.status }}</span>
@@ -128,13 +128,23 @@
                 {% if job.service_notes %}
                 <div class="job-notes"><i class="far fa-sticky-note" style="margin-right:6px;"></i>{{ job.service_notes }}</div>
                 {% endif %}
+                <div style="margin-top:10px;"></div>
+                
                 <form action="{{ url_for('update_status', apt_id=job.apt_id) }}" method="POST">
-                    <select name="status" onchange="this.form.submit()" {% if job.scheduled_time.date() != today %}disabled{% endif %}>
-                        <option value="" disabled selected>Update Progress...</option>
-                        <option value="Pending">Pending</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Finished">Finished</option>
-                    </select>
+                    <select name="status" onchange="this.form.submit()">
+                      <option value="Pending" 
+                         {% if job.status == 'Pending' %}selected{% endif %}>
+                         Pending
+                      </option>
+                      <option value="In Progress"
+                         {% if job.status == 'In Progress' %}selected{% endif %}>
+                         In Progress
+                      </option>
+                      <option value="Finished"
+                        {% if job.status == 'Finished' %}selected{% endif %}>
+                        Finished
+                      </option>
+                  </select>
                 </form>
             </div>
             {% endfor %}
