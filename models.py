@@ -45,6 +45,7 @@ class Appointment(db.Model):
     cleaner_id = db.Column(db.Integer, nullable=False)
     status = db.Column(db.Enum('Pending', 'In Progress', 'Finished', 'Paid', 'Busy', 'Cancelled'), default='Pending')
     scheduled_time = db.Column(db.DateTime)
+    actual_start_time = db.Column(db.DateTime)
     end_time = db.Column(db.DateTime)
     service_notes = db.Column(db.Text)
     cost = db.Column(db.Numeric(10, 2), nullable=True)
