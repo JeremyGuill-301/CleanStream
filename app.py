@@ -1,9 +1,11 @@
 import os
+from datetime import date, datetime, timedelta, time
 from dotenv import load_dotenv
 from flask import Flask, request, render_template, redirect, url_for, flash
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user
 from flask_migrate import Migrate
+from models import User, Appointment
+from extensions import db, login_manager, migrate
 
 
 # Define the Global Variable
@@ -24,19 +26,24 @@ app.config['SECRET_KEY'] = 'CleanStream_Sprint3_2026'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
-db = SQLAlchemy(app)
-login_manager = LoginManager(app)
+db.init_app(app)
+# Use the extension-managed LoginManager and Migrate instances so there's a single
+# SQLAlchemy / LoginManager object shared across the codebase.
+login_manager.init_app(app)
 login_manager.login_view = 'login_page'
 
-# Initialize Migration
-migrate = Migrate(app, db)
 
-# --- MODELS ---
-# Import all models
-from models import init_models
-User, CustomerContact, Appointment, Supplies, Vendors, SupplyInventory = init_models(db)
-# --- I4TP-29 TRACKING FLAG ATTRIBUTE ---
-Appointment.reminder_sent = db.Column(db.Boolean, default=False, nullable=False)
+# --- CREATE TABLES ---
+with app.app_context():
+    db.create_all()
+    print("Database connection established.")
+    print("Tables created successfully.")
+    print("----------------------------------------")
+    print("Server is ready to accept requests.")
+
+
+# Initialize Migration
+migrate.init_app(app, db)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -46,10 +53,14 @@ def load_user(user_id):
 from routes.main import main_bp
 from routes.supplies import supply_bp
 from routes.admin import admin_bp
+from routes.financials import financials_bp
+from routes.customers import customer_bp
 
 app.register_blueprint(main_bp)
 app.register_blueprint(supply_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(financials_bp)
+app.register_blueprint(customer_bp)
 
 # --- ROUTES ---
 @app.route('/')
@@ -106,20 +117,45 @@ def add_employee():
         flash(f'Error: {str(e)}')
     return redirect(url_for('dashboard'))
 
-@app.route('/mobile')
+@app.route('/mobile/', defaults={'date_str': None})
+@app.route('/mobile/<date_str>')
 @login_required
-def mobile_view():
+def mobile_view(date_str):
     if current_user.role != 'Cleaner':
         return redirect(url_for('dashboard'))
-    # Daily Agenda for cleaners
-    agenda = Appointment.query.filter_by(cleaner_id=current_user.id).all()
-    return render_template('mobile/agenda.html', agenda=agenda)
+
+    if date_str:
+        try:
+            current_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            current_date = date.today()
+    else:
+        current_date = date.today()
+
+    start_of_day = datetime.combine(current_date, time.min)
+    end_of_day = datetime.combine(current_date, time.max)
+
+    agenda = Appointment.query.filter(
+        Appointment.cleaner_id == current_user.id,
+        Appointment.scheduled_time >= start_of_day,
+        Appointment.scheduled_time <= end_of_day
+    ).all()
+
+    prev_date = current_date - timedelta(days=1)
+    next_date = current_date + timedelta(days=1)
+
+    return render_template('mobile/agenda.html',
+                           agenda=agenda,
+                           current_date=current_date,
+                           prev_date=prev_date,
+                           next_date=next_date,
+                           today=date.today())
 
 @app.route('/update_status/<int:apt_id>', methods=['POST'])
 @login_required
 def update_status(apt_id):
     appointment = Appointment.query.get_or_404(apt_id)
-    if appointment.cleaner_id == current_user.id:
+    if appointment.cleaner_id == current_user.id and appointment.scheduled_time.date() == date.today():
         appointment.status = request.form.get('status')
         db.session.commit()
     return redirect(url_for('mobile_view'))
@@ -131,4 +167,4 @@ def logout():
     return redirect(url_for('login_page'))
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5002)

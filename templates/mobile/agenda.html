@@ -2,36 +2,134 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CleanStream - Daily Agenda</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CleanStream - Agenda</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: sans-serif; background: #f8fafc; margin: 0; padding: 0; }
-        .header { background: #1e293b; color: white; padding: 20px; text-align: center; }
-        .container { padding: 15px; }
-        .job-card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 5px solid #2563eb; }
-        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; margin-bottom: 10px; }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; width: 100%; overflow-x: hidden; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f1f5f9; color: #0f172a; -webkit-tap-highlight-color: transparent;
+        }
+        .header {
+            background: #1e293b; color: white; padding: 16px; text-align: center;
+            position: sticky; top: 0; z-index: 10;
+        }
+        .header h1 { margin: 0 0 4px; font-size: 1.1rem; font-weight: 600; }
+        .header .user-name { font-size: 0.85rem; opacity: 0.75; margin: 0; }
+        .date-nav {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #334155; margin: 12px -16px -16px; padding: 10px 16px;
+        }
+        .date-nav .nav-btn {
+            background: none; border: none; color: white; font-size: 1.3rem;
+            padding: 8px 12px; cursor: pointer; border-radius: 8px; touch-action: manipulation;
+        }
+        .date-nav .nav-btn:active { background: rgba(255,255,255,0.15); }
+        .date-nav .date-label { font-size: 0.95rem; font-weight: 500; }
+        .date-nav .date-label .today-badge {
+            display: inline-block; background: #22c55e; color: white;
+            font-size: 0.65rem; padding: 2px 8px; border-radius: 10px; margin-left: 6px;
+            font-weight: 700; vertical-align: middle;
+        }
+        .container { padding: 16px; padding-bottom: 80px; max-width: 600px; margin: 0 auto; }
+        .job-card {
+            background: white; border-radius: 14px; padding: 16px; margin-bottom: 14px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-left: 5px solid #2563eb;
+            transition: opacity 0.2s;
+        }
+        .job-card.disabled { opacity: 0.55; border-left-color: #94a3b8; }
+        .job-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+        .job-title { font-weight: 700; font-size: 1.05rem; }
+        .job-time { font-size: 0.85rem; color: #64748b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .job-notes { font-size: 0.85rem; color: #475569; background: #f8fafc; padding: 8px 10px; border-radius: 8px; margin-bottom: 10px; }
+        .status-badge {
+            display: inline-block; padding: 3px 12px; border-radius: 20px;
+            font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+        }
         .status-Pending { background: #fef3c7; color: #92400e; }
         .status-In-Progress { background: #dbeafe; color: #1e40af; }
         .status-Finished { background: #dcfce7; color: #166534; }
-        select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 1rem; margin-top: 10px; }
+        .status-Paid { background: #d1fae5; color: #065f46; }
+        .status-Cancelled { background: #fee2e2; color: #991b1b; }
+        .job-address {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.85rem; margin-bottom: 10px; flex-wrap: wrap;
+        }
+        .maps-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #e8f5e9; color: #2e7d32; padding: 8px 14px;
+            border-radius: 10px; text-decoration: none; font-weight: 600;
+            font-size: 0.85rem; white-space: nowrap; touch-action: manipulation;
+        }
+        .maps-btn:active { background: #c8e6c9; }
+        .address-text { color: #475569; }
+        .job-card select {
+            width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #cbd5e1;
+            font-size: 1rem; background: white; margin-top: 6px; cursor: pointer;
+            -webkit-appearance: none; appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23475569' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 14px center;
+        }
+        .job-card select:disabled {
+            opacity: 0.5; cursor: not-allowed; background-color: #f1f5f9;
+        }
+        .empty-state {
+            text-align: center; padding: 60px 20px; color: #94a3b8;
+        }
+        .empty-state i { font-size: 3rem; margin-bottom: 16px; }
+        .empty-state p { font-size: 1rem; margin: 0; }
+        .logout-link {
+            display: block; text-align: center; padding: 16px; color: #ef4444;
+            text-decoration: none; font-weight: 500; font-size: 0.95rem;
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>My Daily Agenda</h1>
-        <p>{{ current_user.full_name }}</p>
+        <h1>Agenda</h1>
+        <p class="user-name">{{ current_user.full_name }}</p>
+        <div class="date-nav">
+            <a href="{{ url_for('mobile_view', date_str=prev_date) }}" class="nav-btn" aria-label="Previous day">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            <span class="date-label">
+                {{ current_date.strftime('%A, %b %d') }}
+                {% if current_date == today %}<span class="today-badge">TODAY</span>{% endif %}
+            </span>
+            <a href="{{ url_for('mobile_view', date_str=next_date) }}" class="nav-btn" aria-label="Next day">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        </div>
     </div>
+
     <div class="container">
         {% if agenda %}
             {% for job in agenda %}
-            <div class="job-card">
-                <div class="status-badge status-{{ job.status.replace(' ', '-') }}">{{ job.status }}</div>
-                <div style="font-weight: bold;">Job #{{ job.apt_id }}</div>
-                <p>Time: {{ job.scheduled_time.strftime('%I:%M %p') }}</p>
-                {% if job.service_notes %}<p>Notes: {{ job.service_notes }}</p>{% endif %}
+            <div class="job-card{% if job.scheduled_time.date() != today %} disabled{% endif %}">
+                <div class="job-card-top">
+                    <span class="job-title">Job #{{ job.apt_id }}</span>
+                    <span class="status-badge status-{{ job.status.replace(' ', '-') }}">{{ job.status }}</span>
+                </div>
+                <div class="job-time">
+                    <i class="far fa-clock" style="font-size:0.8rem;"></i>
+                    {{ job.scheduled_time.strftime('%I:%M %p') }}{% if job.end_time %} - {{ job.end_time.strftime('%I:%M %p') }}{% endif %}
+                    {% if job.customer %} &middot; {{ job.customer.property_nickname }}{% endif %}
+                </div>
+                {% if job.customer and job.customer.address %}
+                <div class="job-address">
+                    <a href="https://maps.google.com/?daddr={{ (job.customer.address ~ ', ' ~ job.customer.city ~ ', ' ~ job.customer.state ~ ' ' ~ job.customer.zip_code) | urlencode }}" target="_blank" class="maps-btn">
+                        <i class="fas fa-location-dot"></i> Navigate
+                    </a>
+                    <span class="address-text">{{ job.customer.address }}{% if job.customer.city %}, {{ job.customer.city }}{% endif %}{% if job.customer.state %}, {{ job.customer.state }}{% endif %} {{ job.customer.zip_code or '' }}</span>
+                </div>
+                {% endif %}
+                {% if job.service_notes %}
+                <div class="job-notes"><i class="far fa-sticky-note" style="margin-right:6px;"></i>{{ job.service_notes }}</div>
+                {% endif %}
                 <form action="{{ url_for('update_status', apt_id=job.apt_id) }}" method="POST">
-                    <select name="status" onchange="this.form.submit()">
+                    <select name="status" onchange="this.form.submit()" {% if job.scheduled_time.date() != today %}disabled{% endif %}>
                         <option value="" disabled selected>Update Progress...</option>
                         <option value="Pending">Pending</option>
                         <option value="In Progress">In Progress</option>
@@ -41,9 +139,12 @@
             </div>
             {% endfor %}
         {% else %}
-            <p style="text-align:center; padding-top: 50px;">No jobs assigned today.</p>
+            <div class="empty-state">
+                <i class="far fa-calendar-check"></i>
+                <p>No jobs for this day.</p>
+            </div>
         {% endif %}
-        <a href="{{ url_for('logout') }}" style="display:block; text-align:center; padding: 20px; color: #ef4444; text-decoration: none;">Log Out</a>
+        <a href="{{ url_for('logout') }}" class="logout-link"><i class="fas fa-sign-out-alt" style="margin-right:6px;"></i>Log Out</a>
     </div>
 </body>
 </html>
