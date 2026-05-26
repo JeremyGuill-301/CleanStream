@@ -49,6 +49,7 @@ class Appointment(db.Model):
     service_notes = db.Column(db.Text)
     cost = db.Column(db.Numeric(10, 2), nullable=True)
     paid_date = db.Column(db.DateTime, nullable=True)
+    reminder_sent = db.Column(db.Boolean, default=False, nullable=False)     # --- I4TP-29 TRACKING FLAG ATTRIBUTE ---
     created_at = db.Column(db.DateTime, server_default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, server_default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
