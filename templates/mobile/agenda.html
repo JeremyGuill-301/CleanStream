@@ -49,6 +49,7 @@
             font-size: 0.72rem; font-weight: 700; white-space: nowrap;
         }
         .status-Pending { background: #fef3c7; color: #92400e; }
+        .status-Scheduled { background: #e0e7ff; color: #3730a3; }
         .status-In-Progress { background: #dbeafe; color: #1e40af; }
         .status-Finished { background: #dcfce7; color: #166534; }
         .status-Paid { background: #d1fae5; color: #065f46; }
@@ -132,6 +133,10 @@
                 
                 <form action="{{ url_for('update_status', apt_id=job.apt_id) }}" method="POST">
                     <select name="status" onchange="this.form.submit()">
+                      <option value="Scheduled"
+                         {% if job.status == 'Scheduled' %}selected{% endif %}>
+                         Scheduled
+                      </option>
                       <option value="Pending" 
                          {% if job.status == 'Pending' %}selected{% endif %}>
                          Pending

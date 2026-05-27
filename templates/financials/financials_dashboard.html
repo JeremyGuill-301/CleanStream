@@ -35,6 +35,10 @@
                         <div class="dropdown-item" onclick="showMonthlyRevenueReport()">
                             <i class="fas fa-calendar-alt"></i> Monthly Revenue Breakdown
                         </div>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-item" onclick="showHoursReport()">
+                            <i class="fas fa-clock"></i> Hours & Labor
+                        </div>
                     </div>
                 </div>
             </div>
@@ -191,6 +195,57 @@
             </div>
         </div>
     </div>
+
+    <!-- Hours & Labor Report Container -->
+    <div class="report-container" id="hours-report-section" style="display: none;">
+        <div class="report-title">
+            <i class="fas fa-clock"></i> Hours & Labor Report
+            <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+                <span style="font-size: 0.85rem; color: #7f8c8d;">Rate: $<span id="hourly-rate-display">25.00</span>/hr</span>
+                <button class="btn btn-secondary" onclick="printReport()">
+                    <i class="fas fa-print"></i> Print
+                </button>
+            </div>
+        </div>
+        
+        <!-- Hours Metrics -->
+        <div class="report-stats" id="hours-metrics">
+            <div style="text-align: center; padding: 20px;">
+                <div class="loading"></div>
+                <p>Loading metrics...</p>
+            </div>
+        </div>
+
+        <!-- Hours Charts -->
+        <div class="charts-section">
+            <div class="chart-container">
+                <h3 class="chart-title">Hours by Cleaner</h3>
+                <div class="chart-wrapper">
+                    <canvas id="hoursByCleanerChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">Weekly Hours Trend (12 Weeks)</h3>
+                <div class="chart-wrapper">
+                    <canvas id="weeklyHoursChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-container full-width">
+                <h3 class="chart-title">Efficiency: Scheduled vs Actual Hours by Cleaner</h3>
+                <div class="chart-wrapper">
+                    <canvas id="efficiencyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Hours Table -->
+        <div id="hours-report-content">
+            <div style="text-align: center; padding: 20px;">
+                <div class="loading"></div>
+                <p>Loading detailed report...</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -209,7 +264,10 @@
         monthly: null,
         paidVsUnpaid: null,
         cleaner: null,
-        utilization: null
+        utilization: null,
+        hoursByCleaner: null,
+        weeklyHours: null,
+        efficiency: null
     };
 
     // Initialize dashboard
@@ -514,6 +572,7 @@
         document.getElementById('unpaid-report-section').style.display = 'none';
         document.getElementById('cleaner-report-section').style.display = 'none';
         document.getElementById('monthly-report-section').style.display = 'none';
+        document.getElementById('hours-report-section').style.display = 'none';
         
         // Scroll to charts
         document.querySelector('.charts-section').scrollIntoView({ behavior: 'smooth' });
@@ -775,6 +834,304 @@
         content.innerHTML = html;
     }
 
+    // ─── Hours & Labor Report ─────────────────────────────────────────────
+
+    async function showHoursReport() {
+        document.getElementById('dashboard-section').style.display = 'none';
+        document.getElementById('unpaid-report-section').style.display = 'none';
+        document.getElementById('cleaner-report-section').style.display = 'none';
+        document.getElementById('monthly-report-section').style.display = 'none';
+        document.getElementById('hours-report-section').style.display = 'block';
+
+        try {
+            const [summaryRes, cleanerRes, weekRes, efficiencyRes] = await Promise.all([
+                fetch('/financials/api/hours-summary'),
+                fetch('/financials/api/hours-by-cleaner'),
+                fetch('/financials/api/hours-by-week'),
+                fetch('/financials/api/employee-efficiency')
+            ]);
+
+            const summary = await summaryRes.json();
+            const cleanerData = await cleanerRes.json();
+            const weekData = await weekRes.json();
+            const efficiencyData = await efficiencyRes.json();
+
+            displayHoursMetrics(summary);
+            createHoursByCleanerChart(cleanerData);
+            createWeeklyHoursChart(weekData);
+            createEfficiencyChart(efficiencyData);
+            displayHoursDetailedReport(cleanerData, efficiencyData);
+        } catch (error) {
+            console.error('Error loading hours report:', error);
+            document.getElementById('hours-metrics').innerHTML = '<div class="empty-report"><p>Error loading hours data</p></div>';
+        }
+
+        reportsDropdown.classList.remove('show');
+        reportsBtn.classList.remove('active');
+        document.getElementById('hours-report-section').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function displayHoursMetrics(summary) {
+        const container = document.getElementById('hours-metrics');
+        container.innerHTML = `
+            <div class="report-stat">
+                <div class="report-stat-label">Total Hours Tracked</div>
+                <div class="report-stat-value">${summary.total_hours}</div>
+            </div>
+            <div class="report-stat">
+                <div class="report-stat-label">This Month Hours</div>
+                <div class="report-stat-value">${summary.month_hours}</div>
+            </div>
+            <div class="report-stat">
+                <div class="report-stat-label">Avg Hours/Job</div>
+                <div class="report-stat-value">${summary.avg_hours_per_job}</div>
+            </div>
+            <div class="report-stat">
+                <div class="report-stat-label">Jobs Tracked</div>
+                <div class="report-stat-value">${summary.total_jobs_with_hours}</div>
+            </div>
+            <div class="report-stat">
+                <div class="report-stat-label">Est. Labor Cost (All Time)</div>
+                <div class="report-stat-value" style="color: #e74c3c;">$${formatCurrency(summary.est_labor_cost)}</div>
+            </div>
+            <div class="report-stat">
+                <div class="report-stat-label">Est. Labor Cost (This Month)</div>
+                <div class="report-stat-value" style="color: #e74c3c;">$${formatCurrency(summary.est_month_labor_cost)}</div>
+            </div>
+        `;
+    }
+
+    function createHoursByCleanerChart(data) {
+        if (!data.cleaners || data.cleaners.length === 0) return;
+        const ctx = document.getElementById('hoursByCleanerChart').getContext('2d');
+        const labels = data.cleaners.map(d => d.name);
+        const hours = data.cleaners.map(d => d.total_hours);
+        const revenues = data.cleaners.map(d => d.revenue_per_hour);
+
+        if (charts.hoursByCleaner) charts.hoursByCleaner.destroy();
+
+        charts.hoursByCleaner = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Total Hours',
+                    data: hours,
+                    backgroundColor: '#3498db',
+                    borderRadius: 4,
+                    yAxisID: 'y'
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const idx = context.dataIndex;
+                                return 'Rev/hr: $' + revenues[idx].toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Hours' }
+                    }
+                }
+            }
+        });
+    }
+
+    function createWeeklyHoursChart(data) {
+        if (data.length === 0) return;
+        const ctx = document.getElementById('weeklyHoursChart').getContext('2d');
+        const labels = data.map(d => d.week);
+        const hours = data.map(d => d.hours);
+        const jobs = data.map(d => d.jobs);
+
+        if (charts.weeklyHours) charts.weeklyHours.destroy();
+
+        charts.weeklyHours = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Hours',
+                    data: hours,
+                    backgroundColor: '#3498db',
+                    borderRadius: 4,
+                    order: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const idx = context.dataIndex;
+                                return 'Jobs: ' + jobs[idx];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Hours' }
+                    }
+                }
+            }
+        });
+    }
+
+    function createEfficiencyChart(data) {
+        if (!data.cleaners || data.cleaners.length === 0) return;
+        const ctx = document.getElementById('efficiencyChart').getContext('2d');
+        const labels = data.cleaners.map(d => d.name);
+        const actual = data.cleaners.map(d => d.avg_actual_per_job);
+        const scheduled = data.cleaners.map(d => d.avg_scheduled_per_job);
+
+        if (charts.efficiency) charts.efficiency.destroy();
+
+        charts.efficiency = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Scheduled (Avg hrs/job)',
+                        data: scheduled,
+                        backgroundColor: '#95a5a6',
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Actual (Avg hrs/job)',
+                        data: actual,
+                        backgroundColor: function(context) {
+                            const idx = context.dataIndex;
+                            const eff = data.cleaners[idx].efficiency;
+                            return eff >= 0 ? '#27ae60' : '#e74c3c';
+                        },
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const idx = context.dataIndex;
+                                const c = data.cleaners[idx];
+                                if (context.dataset.label.startsWith('Actual')) {
+                                    return 'Efficiency: ' + c.efficiency + '%'
+                                        + '\nTime Saved: ' + c.time_saved_hours + ' hrs'
+                                        + '\nCost Saved: $' + formatCurrency(c.cost_saved);
+                                }
+                                return '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Hours' }
+                    }
+                }
+            }
+        });
+    }
+
+    function displayHoursDetailedReport(cleanerData, efficiencyData) {
+        const container = document.getElementById('hours-report-content');
+        const efficiencyMap = {};
+        (efficiencyData.cleaners || []).forEach(c => { efficiencyMap[c.cleaner_id] = c; });
+
+        let html = '<div class="hours-table-container">';
+        html += '<table class="hours-table">';
+        html += '<thead><tr>';
+        html += '<th>Cleaner</th>';
+        html += '<th>Jobs</th>';
+        html += '<th>Total Hours</th>';
+        html += '<th>Avg Hrs/Job</th>';
+        html += '<th>Scheduled Hrs</th>';
+        html += '<th>Efficiency</th>';
+        html += '<th>Time Saved</th>';
+        html += '<th>Cost Saved</th>';
+        html += '<th>Revenue/Hour</th>';
+        html += '<th>Est. Labor Cost</th>';
+        html += '</tr></thead><tbody>';
+
+        (cleanerData.cleaners || []).forEach(c => {
+            const eff = efficiencyMap[c.cleaner_id] || {};
+            const effClass = (eff.efficiency || 0) >= 0 ? 'positive' : 'negative';
+            const effIcon = (eff.efficiency || 0) >= 0 ? '↑' : '↓';
+            const savedClass = (eff.time_saved_hours || 0) >= 0 ? 'positive' : 'negative';
+
+            html += '<tr>';
+            html += `<td><strong>${c.name}</strong></td>`;
+            html += `<td>${c.total_jobs}</td>`;
+            html += `<td>${c.total_hours}</td>`;
+            html += `<td>${c.avg_hours_per_job}</td>`;
+            html += `<td>${eff.total_scheduled_hours || '—'}</td>`;
+            html += `<td class="${effClass}">${effIcon} ${eff.efficiency != null ? eff.efficiency + '%' : '—'}</td>`;
+            html += `<td class="${savedClass}">${eff.time_saved_hours != null ? eff.time_saved_hours + ' hrs' : '—'}</td>`;
+            html += `<td class="${savedClass}">${eff.cost_saved != null ? '$' + formatCurrency(eff.cost_saved) : '—'}</td>`;
+            html += `<td>$${formatCurrency(c.revenue_per_hour)}</td>`;
+            html += `<td>$${formatCurrency(c.est_labor_cost)}</td>`;
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+
+        if (efficiencyData.summary) {
+            const s = efficiencyData.summary;
+            const overallEffClass = s.overall_efficiency >= 0 ? 'positive' : 'negative';
+            html += `
+                <div class="report-stats" style="margin-top: 20px;">
+                    <div class="report-stat">
+                        <div class="report-stat-label">Overall Efficiency</div>
+                        <div class="report-stat-value ${overallEffClass}">${s.overall_efficiency >= 0 ? '+' : ''}${s.overall_efficiency}%</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-label">Total Time Saved</div>
+                        <div class="report-stat-value positive">${s.total_time_saved} hrs</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-label">Total Cost Saved</div>
+                        <div class="report-stat-value positive">$${formatCurrency(s.total_cost_saved)}</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-label">Total Labor Cost</div>
+                        <div class="report-stat-value" style="color: #e74c3c;">$${formatCurrency(s.total_labor_cost)}</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-label">Total Revenue</div>
+                        <div class="report-stat-value" style="color: #27ae60;">$${formatCurrency(s.total_revenue)}</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-label">Revenue - Labor</div>
+                        <div class="report-stat-value">$${formatCurrency(s.total_revenue - s.total_labor_cost)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+    }
+
      // Print Report
      function printReport() {
          const header = document.createElement('div');
@@ -794,15 +1151,17 @@
              minute: '2-digit'
          });
          
-         let reportTitle = 'Financial Dashboard';
-         const dashboardVisible = document.getElementById('dashboard-section').style.display !== 'none';
-         const unpaidVisible = document.getElementById('unpaid-report-section').style.display !== 'none';
-         const cleanerVisible = document.getElementById('cleaner-report-section').style.display !== 'none';
-         const monthlyVisible = document.getElementById('monthly-report-section').style.display !== 'none';
-         
-         if (unpaidVisible) reportTitle = 'Unpaid Jobs Report';
-         else if (cleanerVisible) reportTitle = 'Revenue by Cleaner Report';
-         else if (monthlyVisible) reportTitle = 'Monthly Revenue Breakdown';
+          let reportTitle = 'Financial Dashboard';
+          const dashboardVisible = document.getElementById('dashboard-section').style.display !== 'none';
+          const unpaidVisible = document.getElementById('unpaid-report-section').style.display !== 'none';
+          const cleanerVisible = document.getElementById('cleaner-report-section').style.display !== 'none';
+          const monthlyVisible = document.getElementById('monthly-report-section').style.display !== 'none';
+          const hoursVisible = document.getElementById('hours-report-section').style.display !== 'none';
+          
+          if (unpaidVisible) reportTitle = 'Unpaid Jobs Report';
+          else if (cleanerVisible) reportTitle = 'Revenue by Cleaner Report';
+          else if (monthlyVisible) reportTitle = 'Monthly Revenue Breakdown';
+          else if (hoursVisible) reportTitle = 'Hours & Labor Report';
          
          header.innerHTML = `<div class="print-header-content"><h1>${reportTitle}</h1><p>CleanStream Financial Report | Generated: ${timestamp}</p></div>`;
          footer.innerHTML = `CleanStream - ${reportTitle} | Printed: ${timestamp}`;

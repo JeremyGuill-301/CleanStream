@@ -35,8 +35,10 @@ class Appointment(db.Model):
     apt_id = db.Column(db.Integer, primary_key=True)
     customer_id = db.Column(db.Integer, db.ForeignKey('customer_contacts.customer_id'), nullable=False)
     cleaner_id = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.Enum('Pending', 'In Progress', 'Finished', 'Paid', 'Busy', 'Cancelled'), default='Pending')
+    status = db.Column(db.Enum('Pending', 'Scheduled', 'In Progress', 'Finished', 'Paid', 'Busy', 'Cancelled'), default='Scheduled')
     scheduled_time = db.Column(db.DateTime)
+    actual_start_time = db.Column(db.DateTime)
+    actual_finish_time = db.Column(db.DateTime)
     end_time = db.Column(db.DateTime)
     service_notes = db.Column(db.Text)
     cost = db.Column(db.Numeric(10, 2), nullable=True)
@@ -119,15 +121,15 @@ def generate_appointments_for_date_range(start_date, end_date, customers, cleane
                 end_time = scheduled_time + timedelta(hours=duration)
                 
                 # Random status and cost
-                status = random.choice(['Pending', 'Paid', 'Finished'])
+                status = random.choice(['Scheduled', 'Paid', 'Finished'])
                 cost = random.randint(50, 250)
-                
+
                 paid_date = None
                 if status == 'Paid':
                     paid_date = scheduled_time + timedelta(days=random.randint(1, 7))
-                
+
                 cleaner_id = random.choice(cleaners)
-                
+
                 appointment = {
                     'customer_id': customer_id,
                     'cleaner_id': cleaner_id,
@@ -304,14 +306,14 @@ with app.app_context():
                 scheduled_time = current_date.replace(hour=hour, minute=0, second=0)
                 end_time = scheduled_time + timedelta(hours=duration)
                 
-                status = random.choice(['Pending', 'Paid', 'Finished'])
+                status = random.choice(['Scheduled', 'Paid', 'Finished'])
                 cost = random.randint(75, 200)
                 paid_date = None
                 if status == 'Paid':
                     paid_date = scheduled_time + timedelta(days=random.randint(1, 3))
-                
+
                 cleaner_id = random.choice(cleaners)
-                
+
                 appointment = Appointment(
                     apt_id=apt_id,
                     customer_id=regular_customer_id,

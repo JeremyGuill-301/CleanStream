@@ -18,7 +18,7 @@ def dashboard():
     #  Calculate the count of pending appointments from the database
     try:
         pending_count = db.session.execute(
-            db.text("SELECT COUNT(*) FROM appointments WHERE status = 'Pending'")
+            db.text("SELECT COUNT(*) FROM appointments WHERE status IN ('Pending', 'Scheduled')")
         ).scalar()
     except Exception:
         pending_count = 0
@@ -110,11 +110,11 @@ def make_appointment():
         if not u_id or not start or not end:
             return jsonify({"status": "error", "message": "Missing arguments"}), 400
 
-        #  FIXED: 'status' kept to strict ENUM value 'Pending'. 
+        #  FIXED: 'status' set to 'Scheduled' when a job is scheduled.
         # House string is safely preserved inside the TEXT field 'service_notes'.
         insert_query = """
             INSERT INTO appointments (cleaner_id, scheduled_time, end_time, service_notes, status) 
-            VALUES (:cleaner_id, :start_time, :end_time, :service_notes, 'Pending')
+            VALUES (:cleaner_id, :start_time, :end_time, :service_notes, 'Scheduled')
         """
         db.session.execute(db.text(insert_query), {
             'cleaner_id': u_id,

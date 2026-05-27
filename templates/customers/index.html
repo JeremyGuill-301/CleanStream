@@ -3,6 +3,178 @@
 {% block title %}Customers - CleanStream{% endblock %}
 
 {% block content %}
+<style>
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s ease;
+  }
+  .modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .modal-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    width: 94%;
+    max-width: 1000px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+  }
+  .modal.show .modal-content {
+    transform: translateY(-20px);
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .modal-header {
+    padding: 24px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #64748b;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-close:hover {
+    color: #1e293b;
+  }
+  .modal-body {
+    padding: 24px;
+  }
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background: #f8fafc;
+  }
+  .customer-card {
+    cursor: pointer;
+  }
+  .table-wrap {
+    overflow-x: auto;
+    margin-bottom: 24px;
+  }
+  .table-wrap:last-child {
+    margin-bottom: 0;
+  }
+  .table-wrap h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  .table-wrap thead {
+    background: #1e293b;
+    color: white;
+  }
+  .table-wrap th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+  }
+  .table-wrap td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #475569;
+  }
+  .table-wrap tbody tr:hover {
+    background: #f8fafc;
+  }
+  .balance-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .balance-badge.has-balance {
+    background: #fee2e2;
+    color: #7f1d1d;
+  }
+  .balance-badge.no-balance {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  .section-label {
+    color: #64748b;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .section-value {
+    color: #1e293b;
+    font-weight: 600;
+    margin: 0;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .badge-success {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  .badge-warning {
+    background: #fff7ed;
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.12);
+  }
+  .pill-default {
+    background: #eef2ff;
+    color: #3730a3;
+    border: 1px solid rgba(99,102,241,0.08);
+  }
+</style>
+
 <div class="space-y-6">
   <div class="flex items-center justify-between">
     <h1 class="text-3xl font-bold text-gray-900">Customers</h1>
@@ -20,7 +192,7 @@
           {% set border = 'border-l-yellow-500' %}
         {% endif %}
 
-        <div class="bg-white rounded-lg shadow border-l-4 {{ border }} hover:shadow-md transition-shadow">
+        <div class="customer-card bg-white rounded-lg shadow border-l-4 {{ border }} hover:shadow-md transition-shadow" data-customer-id="{{ cid }}">
           <div class="grid grid-cols-12 gap-4 p-5">
 
             <!-- SECTION 1: Name, Phone, Email -->
@@ -130,4 +302,232 @@
     <span><span class="inline-block w-3 h-3 rounded-full bg-gray-300 mr-1"></span> No recent activity</span>
   </span>
 </div>
+
+<!-- Customer Details Modal -->
+<div id="customerModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div>
+        <h2 class="modal-title" id="modalCustomerName">Customer Name</h2>
+        <p style="color: #64748b; font-size: 0.9rem; margin: 4px 0 0 0;" id="modalCustomerProperty"></p>
+        <p style="color: #64748b; font-size: 0.9rem; margin: 2px 0 0 0;" id="modalCustomerAddress"></p>
+      </div>
+      <button type="button" class="modal-close" data-modal="customerModal">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <!-- Customer Info Grid -->
+      <div class="grid grid-cols-12 gap-4 mb-6 pb-6 border-b border-gray-100">
+        <div class="col-span-3">
+          <div class="section-label">Phone</div>
+          <p class="section-value" id="modalPhone"></p>
+        </div>
+        <div class="col-span-3">
+          <div class="section-label">Email</div>
+          <p class="section-value" id="modalEmail"></p>
+        </div>
+        <div class="col-span-3">
+          <div class="section-label">Last Job</div>
+          <p class="section-value" id="modalLastJob"></p>
+        </div>
+        <div class="col-span-3">
+          <div class="section-label">Next Job</div>
+          <p class="section-value" id="modalNextJob"></p>
+        </div>
+        <div class="col-span-6">
+          <div class="section-label">Anniversary</div>
+          <p class="section-value" id="modalAnniversary"></p>
+        </div>
+        <div class="col-span-6">
+          <div class="section-label">Tenure</div>
+          <p class="section-value" id="modalTenure"></p>
+        </div>
+      </div>
+
+      <!-- Jobs Table -->
+      <div class="table-wrap">
+        <h3><i class="fas fa-broom" style="color: #3b82f6;"></i> Job History</h3>
+        <div style="max-height: 240px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Cleaner</th>
+                <th>Status</th>
+                <th>Amount</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="modalJobsBody">
+              <tr><td colspan="5" style="text-align:center;color:#94a3b8;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Payment History Table -->
+      <div class="table-wrap">
+        <h3>
+          <i class="fas fa-credit-card" style="color: #10b981;"></i> Payment History
+          <span id="modalBalanceBadge" class="balance-badge no-balance" style="margin-left:auto;font-size:0.8rem;">
+            <i class="fas fa-check-circle"></i> No balance due
+          </span>
+        </h3>
+        <div style="max-height: 240px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Date Paid</th>
+                <th>Job Date</th>
+                <th>Amount</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="modalPaymentsBody">
+              <tr><td colspan="4" style="text-align:center;color:#94a3b8;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn" style="background: #e2e8f0; color: #475569;" data-modal="customerModal">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.customer-card');
+    const modal = document.getElementById('customerModal');
+    const modalCloseBtns = document.querySelectorAll('[data-modal="customerModal"]');
+
+    function openModal() {
+      modal.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      modal.classList.remove('show');
+      document.body.style.overflow = 'auto';
+    }
+
+    modalCloseBtns.forEach(btn => {
+      btn.addEventListener('click', closeModal);
+    });
+
+    modal.addEventListener('click', function(event) {
+      if (event.target === this) {
+        closeModal();
+      }
+    });
+
+    function formatDate(isoStr) {
+      if (!isoStr) return 'N/A';
+      const d = new Date(isoStr);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function formatCurrency(val) {
+      return '$' + parseFloat(val).toFixed(2);
+    }
+
+    cards.forEach(card => {
+      card.addEventListener('click', function() {
+        const customerId = this.getAttribute('data-customer-id');
+
+        // Reset modal
+        document.getElementById('modalCustomerName').textContent = 'Loading...';
+        document.getElementById('modalCustomerProperty').textContent = '';
+        document.getElementById('modalCustomerAddress').textContent = '';
+        document.getElementById('modalPhone').textContent = '';
+        document.getElementById('modalEmail').textContent = '';
+        document.getElementById('modalLastJob').textContent = '';
+        document.getElementById('modalNextJob').textContent = '';
+        document.getElementById('modalAnniversary').textContent = '';
+        document.getElementById('modalTenure').textContent = '';
+        document.getElementById('modalJobsBody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">Loading...</td></tr>';
+        document.getElementById('modalPaymentsBody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;">Loading...</td></tr>';
+        document.getElementById('modalBalanceBadge').className = 'balance-badge no-balance';
+        document.getElementById('modalBalanceBadge').innerHTML = '<i class="fas fa-check-circle"></i> No balance due';
+
+        openModal();
+
+        fetch(`/customer/${customerId}/details`)
+          .then(response => response.json())
+          .then(data => {
+            const c = data.customer;
+
+            document.getElementById('modalCustomerName').textContent = c.first_name + ' ' + c.last_name;
+            document.getElementById('modalCustomerProperty').innerHTML = '<i class="fas fa-home" style="color:#10b981;margin-right:4px;"></i> ' + (c.property_nickname || '');
+            const addrParts = [];
+            if (c.address) addrParts.push(c.address);
+            if (c.city) addrParts.push(c.city);
+            if (c.state) addrParts.push(c.state);
+            if (c.zip_code) addrParts.push(c.zip_code);
+            document.getElementById('modalCustomerAddress').innerHTML = '<i class="fas fa-map-marker-alt" style="color:#64748b;margin-right:4px;"></i> ' + (addrParts.join(', ') || 'N/A');
+
+            document.getElementById('modalPhone').textContent = c.phone || 'N/A';
+            document.getElementById('modalEmail').textContent = c.email || 'N/A';
+            document.getElementById('modalLastJob').textContent = formatDate(data.last_job_date);
+            document.getElementById('modalNextJob').textContent = formatDate(data.next_job_date);
+            document.getElementById('modalAnniversary').textContent = formatDate(c.anniversary);
+            document.getElementById('modalTenure').textContent = c.tenure || 'N/A';
+
+            // Balance badge
+            const balance = parseFloat(data.balance);
+            const badge = document.getElementById('modalBalanceBadge');
+            if (balance > 0) {
+              badge.className = 'balance-badge has-balance';
+              badge.innerHTML = '<i class="fas fa-exclamation-circle"></i> Balance: ' + formatCurrency(balance);
+            } else {
+              badge.className = 'balance-badge no-balance';
+              badge.innerHTML = '<i class="fas fa-check-circle"></i> No balance due';
+            }
+
+            // Jobs table
+            const jobsBody = document.getElementById('modalJobsBody');
+            if (data.jobs.length === 0) {
+              jobsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">No job history</td></tr>';
+            } else {
+              jobsBody.innerHTML = data.jobs.map(j => `
+                <tr>
+                  <td>${formatDate(j.scheduled_time)}</td>
+                  <td>${j.cleaner_name}</td>
+                  <td><span class="badge ${j.status === 'Paid' ? 'badge-success' : j.status === 'Finished' ? 'badge-warning' : 'pill-default'}">${j.status}</span></td>
+                  <td>${formatCurrency(j.cost)}</td>
+                  <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${j.service_notes || '-'}</td>
+                </tr>
+              `).join('');
+            }
+
+            // Payments table
+            const paymentsBody = document.getElementById('modalPaymentsBody');
+            if (data.payments.length === 0) {
+              paymentsBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;">No payment history</td></tr>';
+            } else {
+              paymentsBody.innerHTML = data.payments.map(p => `
+                <tr>
+                  <td>${formatDate(p.paid_date)}</td>
+                  <td>${formatDate(p.scheduled_time)}</td>
+                  <td>${formatCurrency(p.cost)}</td>
+                  <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.service_notes || '-'}</td>
+                </tr>
+              `).join('');
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('modalCustomerName').textContent = 'Error loading details';
+            document.getElementById('modalJobsBody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ef4444;">Failed to load data</td></tr>';
+            document.getElementById('modalPaymentsBody').innerHTML = '<tr><td colspan="4" style="text-align:center;color:#ef4444;">Failed to load data</td></tr>';
+          });
+      });
+    });
+  });
+</script>
 {% endblock %}

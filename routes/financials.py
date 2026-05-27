@@ -573,3 +573,270 @@ def get_unpaid_jobs_report():
         },
         "groups": report_groups
     })
+
+
+HOURLY_RATE = 25.00
+
+@financials_bp.route("/api/hours-summary")
+@login_required
+def get_hours_summary():
+    if current_user.role != 'BusinessOwner':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    today = datetime.now().date()
+    start_of_month = today.replace(day=1)
+    start_of_week = today - timedelta(days=today.weekday())
+
+    if today.month == 1:
+        last_month_start = today.replace(year=today.year - 1, month=12, day=1)
+        last_month_end = today.replace(year=today.year - 1, month=12, day=31)
+    else:
+        last_month_start = today.replace(month=today.month - 1, day=1)
+        last_month_end = today.replace(day=1) - timedelta(days=1)
+
+    hours_filter = (
+        Appointment.actual_start_time.isnot(None),
+        Appointment.actual_finish_time.isnot(None),
+        Appointment.status.in_(['Finished', 'Paid'])
+    )
+
+    total_hours = db.session.query(func.sum(Appointment.hours_spent)).filter(*hours_filter).scalar() or 0
+
+    month_hours = db.session.query(func.sum(Appointment.hours_spent)).filter(
+        *hours_filter,
+        func.date(Appointment.actual_finish_time) >= start_of_month,
+        func.date(Appointment.actual_finish_time) <= today
+    ).scalar() or 0
+
+    last_month_hours = db.session.query(func.sum(Appointment.hours_spent)).filter(
+        *hours_filter,
+        func.date(Appointment.actual_finish_time) >= last_month_start,
+        func.date(Appointment.actual_finish_time) <= last_month_end
+    ).scalar() or 0
+
+    week_hours = db.session.query(func.sum(Appointment.hours_spent)).filter(
+        *hours_filter,
+        func.date(Appointment.actual_finish_time) >= start_of_week,
+        func.date(Appointment.actual_finish_time) <= today
+    ).scalar() or 0
+
+    avg_hours = db.session.query(func.avg(Appointment.hours_spent)).filter(*hours_filter).scalar() or 0
+
+    total_jobs_with_hours = db.session.query(func.count(Appointment.apt_id)).filter(*hours_filter).scalar() or 0
+
+    return jsonify({
+        "total_hours": round(float(total_hours), 2),
+        "month_hours": round(float(month_hours), 2),
+        "last_month_hours": round(float(last_month_hours), 2),
+        "week_hours": round(float(week_hours), 2),
+        "avg_hours_per_job": round(float(avg_hours), 2),
+        "total_jobs_with_hours": total_jobs_with_hours,
+        "est_labor_cost": round(float(total_hours) * HOURLY_RATE, 2),
+        "est_month_labor_cost": round(float(month_hours) * HOURLY_RATE, 2)
+    })
+
+
+@financials_bp.route("/api/hours-by-cleaner")
+@login_required
+def get_hours_by_cleaner():
+    if current_user.role != 'BusinessOwner':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    hours_filter = (
+        Appointment.actual_start_time.isnot(None),
+        Appointment.actual_finish_time.isnot(None),
+        Appointment.status.in_(['Finished', 'Paid'])
+    )
+
+    cleaner_stats = db.session.query(
+        User.id,
+        User.full_name,
+        func.count(Appointment.apt_id).label('total_jobs'),
+        func.sum(Appointment.hours_spent).label('total_hours'),
+        func.avg(Appointment.hours_spent).label('avg_hours'),
+        func.sum(Appointment.cost).label('total_revenue')
+    ).join(
+        Appointment, User.id == Appointment.cleaner_id
+    ).filter(
+        User.role == 'Cleaner',
+        *hours_filter
+    ).group_by(
+        User.id, User.full_name
+    ).order_by(
+        func.sum(Appointment.hours_spent).desc()
+    ).all()
+
+    cleaners = []
+    for cid, name, jobs, hours, avg_h, revenue in cleaner_stats:
+        cleaners.append({
+            "cleaner_id": cid,
+            "name": name or "Unknown",
+            "total_jobs": jobs or 0,
+            "total_hours": round(float(hours or 0), 2),
+            "avg_hours_per_job": round(float(avg_h or 0), 2),
+            "total_revenue": float(revenue or 0),
+            "est_labor_cost": round(float(hours or 0) * HOURLY_RATE, 2),
+            "revenue_per_hour": round(float(revenue or 0) / float(hours or 1), 2)
+        })
+
+    summary = {
+        "total_cleaners": len(cleaners),
+        "total_hours": round(sum(c["total_hours"] for c in cleaners), 2),
+        "total_revenue": round(sum(c["total_revenue"] for c in cleaners), 2),
+        "total_labor_cost": round(sum(c["est_labor_cost"] for c in cleaners), 2)
+    }
+
+    return jsonify({"cleaners": cleaners, "summary": summary})
+
+
+@financials_bp.route("/api/hours-by-week")
+@login_required
+def get_hours_by_week():
+    if current_user.role != 'BusinessOwner':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    weeks_data = []
+    today = datetime.now().date()
+
+    for i in range(11, -1, -1):
+        week_start = today - timedelta(days=today.weekday() + 7*i)
+        week_end = week_start + timedelta(days=6)
+
+        result = db.session.query(
+            func.sum(Appointment.hours_spent),
+            func.count(Appointment.apt_id),
+            func.sum(Appointment.cost)
+        ).filter(
+            Appointment.actual_start_time.isnot(None),
+            Appointment.actual_finish_time.isnot(None),
+            Appointment.status.in_(['Finished', 'Paid']),
+            func.date(Appointment.actual_finish_time) >= week_start,
+            func.date(Appointment.actual_finish_time) <= week_end
+        ).first()
+
+        hours = float(result[0] or 0)
+        jobs = result[1] or 0
+        revenue = float(result[2] or 0)
+
+        week_label = f"Week of {week_start.strftime('%m/%d')}"
+        weeks_data.append({
+            "week": week_label,
+            "hours": round(hours, 2),
+            "jobs": jobs,
+            "revenue": round(revenue, 2),
+            "labor_cost": round(hours * HOURLY_RATE, 2),
+            "start_date": week_start.isoformat(),
+            "end_date": week_end.isoformat()
+        })
+
+    return jsonify(weeks_data)
+
+
+@financials_bp.route("/api/employee-efficiency")
+@login_required
+def get_employee_efficiency():
+    if current_user.role != 'BusinessOwner':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    efficiency_filter = (
+        Appointment.actual_start_time.isnot(None),
+        Appointment.actual_finish_time.isnot(None),
+        Appointment.scheduled_time.isnot(None),
+        Appointment.end_time.isnot(None),
+        Appointment.status.in_(['Finished', 'Paid'])
+    )
+
+    raw_data = db.session.query(
+        User.id,
+        User.full_name,
+        Appointment.apt_id,
+        Appointment.scheduled_time,
+        Appointment.end_time,
+        Appointment.hours_spent,
+        Appointment.cost
+    ).join(
+        Appointment, User.id == Appointment.cleaner_id
+    ).filter(
+        User.role == 'Cleaner',
+        *efficiency_filter
+    ).order_by(
+        User.full_name
+    ).all()
+
+    cleaner_map = {}
+    for cid, name, apt_id, sched_time, end_time, hours, cost in raw_data:
+        if cid not in cleaner_map:
+            cleaner_map[cid] = {
+                "cleaner_id": cid,
+                "name": name or "Unknown",
+                "jobs": [],
+                "total_actual_hours": 0.0,
+                "total_scheduled_hours": 0.0,
+                "total_revenue": 0.0
+            }
+        actual = float(hours or 0)
+
+        sched_seconds = 0
+        if sched_time and end_time:
+            sched_seconds = (end_time - sched_time).total_seconds()
+        scheduled = round(sched_seconds / 3600, 2)
+
+        cleaner_map[cid]["jobs"].append(apt_id)
+        cleaner_map[cid]["total_actual_hours"] += actual
+        cleaner_map[cid]["total_scheduled_hours"] += scheduled
+        cleaner_map[cid]["total_revenue"] += float(cost or 0)
+
+    cleaners = []
+    total_actual = 0
+    total_scheduled = 0
+    total_revenue = 0
+
+    for cid, data in cleaner_map.items():
+        actual = round(data["total_actual_hours"], 2)
+        scheduled = round(data["total_scheduled_hours"], 2)
+        jobs = len(data["jobs"])
+        revenue = round(data["total_revenue"], 2)
+
+        if scheduled > 0:
+            efficiency = round((scheduled - actual) / scheduled * 100, 1)
+        else:
+            efficiency = 0
+
+        time_saved = round(scheduled - actual, 2)
+        cost_saved = round(time_saved * HOURLY_RATE, 2)
+        labor_cost = round(actual * HOURLY_RATE, 2)
+
+        total_actual += actual
+        total_scheduled += scheduled
+        total_revenue += revenue
+
+        cleaners.append({
+            "cleaner_id": cid,
+            "name": data["name"],
+            "total_jobs": jobs,
+            "total_actual_hours": actual,
+            "total_scheduled_hours": scheduled,
+            "avg_actual_per_job": round(actual / jobs, 2) if jobs else 0,
+            "avg_scheduled_per_job": round(scheduled / jobs, 2) if jobs else 0,
+            "efficiency": efficiency,
+            "efficiency_ratio": round(actual / scheduled, 2) if scheduled > 0 else 0,
+            "time_saved_hours": time_saved,
+            "cost_saved": cost_saved,
+            "total_revenue": revenue,
+            "total_labor_cost": labor_cost
+        })
+
+    summary = {
+        "total_actual_hours": round(total_actual, 2),
+        "total_scheduled_hours": round(total_scheduled, 2),
+        "total_time_saved": round(total_scheduled - total_actual, 2),
+        "total_cost_saved": round((total_scheduled - total_actual) * HOURLY_RATE, 2),
+        "total_revenue": round(total_revenue, 2),
+        "total_labor_cost": round(total_actual * HOURLY_RATE, 2),
+        "overall_efficiency": round(
+            (total_scheduled - total_actual) / total_scheduled * 100
+            if total_scheduled > 0 else 0, 1
+        )
+    }
+
+    return jsonify({"cleaners": cleaners, "summary": summary})
