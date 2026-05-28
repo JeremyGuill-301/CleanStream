@@ -38,7 +38,7 @@ def supplies_index():
     if current_user.role not in ['OfficeAdmin', 'BusinessOwner']:
         return redirect(url_for('mobile_view'))
 
-    customers = CustomerContact.query.all()
+    customers = CustomerContact.query.order_by(CustomerContact.last_name, CustomerContact.first_name).all()
     now = datetime.now()
     sixty_days_ago = now - timedelta(days=60)
 
@@ -153,9 +153,9 @@ def customer_details(customer_id):
                 .order_by(Appointment.scheduled_time.asc())
                 .first())
 
-    # All jobs (non-cancelled)
+    # All jobs for this customer
     jobs = (Appointment.query
-            .filter(Appointment.customer_id == customer_id, Appointment.status != 'Cancelled')
+            .filter(Appointment.customer_id == customer_id)
             .order_by(Appointment.scheduled_time.desc())
             .all())
 

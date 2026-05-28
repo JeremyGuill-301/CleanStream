@@ -176,7 +176,7 @@ def get_service_performance():
         User.full_name,
         func.count(Appointment.apt_id).label('total_jobs'),
         func.sum(Appointment.cost).label('total_revenue'),
-        func.count(func.case([(Appointment.status == 'Paid', 1)])).label('paid_jobs')
+        func.sum(func.case((Appointment.status == 'Paid', 1), else_=0)).label('paid_jobs')
     ).outerjoin(
         Appointment, User.id == Appointment.cleaner_id
     ).filter(

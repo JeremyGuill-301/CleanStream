@@ -86,11 +86,20 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Assigned Property / House</label>
-                <select id="modal_house_id" required 
-                        class="w-full p-2.5 bg-white border border-slate-300 rounded-md outline-none focus:border-emerald-500 font-medium text-slate-700">
-                    <option value="" disabled selected>Loading scheduled customer houses...</option>
-                </select>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Customer / Property</label>
+                <div id="customer_dropdown" class="relative">
+                    <input type="hidden" id="modal_customer_id" name="customer_id" required>
+                    <div id="customer_trigger" tabindex="0"
+                         class="w-full p-2.5 bg-white border border-slate-300 rounded-md cursor-pointer flex items-center justify-between outline-none focus:border-emerald-500 font-medium text-slate-700">
+                        <span id="customer_selected_text" class="text-slate-400">-- Select a Customer --</span>
+                        <svg class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                    <div id="customer_panel" class="hidden absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+                        <input type="text" id="customer_search" placeholder="Search customers..." autocomplete="off"
+                               class="w-full p-2.5 border-b border-slate-200 outline-none focus:border-emerald-500 text-sm">
+                        <div id="customer_options" class="overflow-y-auto max-h-48"></div>
+                    </div>
+                </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
@@ -106,6 +115,12 @@
                 </div>
             </div>
 
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Amount ($)</label>
+                <input type="number" id="modal_cost" required step="0.01" min="0" placeholder="0.00"
+                       class="w-full p-2.5 bg-white border border-slate-300 rounded-md font-medium outline-none focus:border-emerald-500">
+            </div>
+
             <div class="flex justify-end gap-2 pt-2 border-t border-slate-50 mt-4">
                 <button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-md font-medium text-sm">Cancel</button>
                 <button type="submit" class="px-4 py-2 bg-emerald-500 text-white rounded-md font-medium text-sm shadow-sm hover:bg-emerald-600">
@@ -116,7 +131,70 @@
     </div>
 </div>
 
+{% include 'shared/edit_booking_modal.html' %}
+
 <script>
+let allCustomers = [];
+
+function renderCustomerOptions(customers) {
+    const container = document.getElementById('customer_options');
+    container.innerHTML = '';
+    customers.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'px-3 py-2 cursor-pointer hover:bg-emerald-50 border-b border-slate-100 last:border-b-0';
+        div.innerHTML = `${c.last_name}, ${c.first_name} <span style="font-size:0.85em;color:#64748b;">(${c.full_address})</span>`;
+        div.addEventListener('click', function() {
+            selectCustomer(c.customer_id, `${c.last_name}, ${c.first_name}`, c.full_address);
+        });
+        container.appendChild(div);
+    });
+    if (customers.length === 0) {
+        container.innerHTML = '<div class="px-3 py-4 text-center text-sm text-slate-400">No customers match your search</div>';
+    }
+}
+
+function selectCustomer(id, label, address) {
+    document.getElementById('modal_customer_id').value = id;
+    document.getElementById('modal_customer_id').setAttribute('data-address', address);
+    document.getElementById('customer_selected_text').textContent = label;
+    document.getElementById('customer_selected_text').className = 'text-slate-700 font-medium';
+    closeCustomerDropdown();
+
+    // Fetch last cost for this customer
+    fetch(`/main/api/last-cost/${id}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.last_cost != null) {
+                document.getElementById('modal_cost').value = data.last_cost.toFixed(2);
+            } else {
+                document.getElementById('modal_cost').value = '';
+            }
+        })
+        .catch(() => {});
+}
+
+function toggleCustomerDropdown() {
+    const panel = document.getElementById('customer_panel');
+    if (panel.classList.contains('hidden')) {
+        openCustomerDropdown();
+    } else {
+        closeCustomerDropdown();
+    }
+}
+
+function openCustomerDropdown() {
+    const panel = document.getElementById('customer_panel');
+    panel.classList.remove('hidden');
+    const search = document.getElementById('customer_search');
+    search.value = '';
+    search.focus();
+    renderCustomerOptions(allCustomers);
+}
+
+function closeCustomerDropdown() {
+    document.getElementById('customer_panel').classList.add('hidden');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     var calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
@@ -127,27 +205,8 @@ document.addEventListener('DOMContentLoaded', function() {
         events: "/main/api/calendar-data", 
         dateClick: function(info) { openAppointmentModal(info.dateStr); },
         
-        // ✨ NEW: Catches clicking actions on populated calendar boxes to trigger deletions!
         eventClick: function(info) {
-            const appointmentTitle = info.event.title;
-            const appointmentId = info.event.id; // Pulled directly from your updated JSON payload
-
-            if (confirm(`Are you sure you want to cancel the scheduled cleaning appointment for: ${appointmentTitle}?`)) {
-                // Construct parameters targeting the specific primary key row index
-                const params = new URLSearchParams({ id: appointmentId });
-
-                fetch(`/main/api/delete-appointment?${params}`, { method: 'POST' })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            // Instantly drop the event from the display canvas layer dynamically
-                            info.event.remove();
-                        } else {
-                            alert('Server Error during deletion: ' + data.message);
-                        }
-                    })
-                    .catch(err => console.error("Network exception deleting appointment:", err));
-            }
+            openEditModal(info.event.id);
         }
     });
     calendar.render();
@@ -184,22 +243,45 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }).catch(err => console.error("Error loading cleaners:", err));
 
-    // ✨ NEW: Temporary customer houses placeholder array for your demonstration.
-    // Once the customer table is active in MySQL, replace this block with a fetch() call.
-    const mockupHouses = [
-        { id: 1, name: "1042 Elm Street (Smith Residence)" },
-        { id: 2, name: "582 Oak Avenue (Miller Estate)" },
-        { id: 3, name: "904 Pine Road (Davis Luxury Rental)" },
-        { id: 4, name: "12 Pineberry Way (Jones Apartment)" }
-    ];
-    
-    const houseSelect = document.getElementById('modal_house_id');
-    houseSelect.innerHTML = '<option value="" disabled selected>-- Select a Property Location --</option>';
-    mockupHouses.forEach(house => {
-        const option = document.createElement('option');
-        option.value = house.name; // Pass text directly as the identifier value
-        option.textContent = house.name;
-        houseSelect.appendChild(option);
+    // Fetch customers from the database
+    fetch("/main/api/customers")
+        .then(res => res.json())
+        .then(customers => {
+            allCustomers = customers;
+            renderCustomerOptions(customers);
+        }).catch(err => console.error("Error loading customers:", err));
+
+    // Customer dropdown events
+    document.getElementById('customer_trigger').addEventListener('click', toggleCustomerDropdown);
+    document.getElementById('customer_search').addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        const filtered = allCustomers.filter(c =>
+            c.last_name.toLowerCase().includes(query) ||
+            c.first_name.toLowerCase().includes(query) ||
+            c.full_address.toLowerCase().includes(query)
+        );
+        renderCustomerOptions(filtered);
+    });
+    document.getElementById('customer_search').addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeCustomerDropdown();
+        if (e.key === 'Enter' && this.value) {
+            const filtered = allCustomers.filter(c =>
+                c.last_name.toLowerCase().includes(this.value.toLowerCase()) ||
+                c.first_name.toLowerCase().includes(this.value.toLowerCase()) ||
+                c.full_address.toLowerCase().includes(this.value.toLowerCase())
+            );
+            if (filtered.length === 1) {
+                selectCustomer(filtered[0].customer_id, `${filtered[0].last_name}, ${filtered[0].first_name}`, filtered[0].full_address);
+            }
+        }
+    });
+    document.addEventListener('click', function(e) {
+        const dd = document.getElementById('customer_dropdown');
+        if (!dd.contains(e.target)) closeCustomerDropdown();
+    });
+    document.getElementById('customer_search').addEventListener('blur', function() {
+        // Delay to allow option click to register first
+        setTimeout(closeCustomerDropdown, 200);
     });
 
     document.getElementById('modalForm').addEventListener('submit', function(e) {
@@ -213,11 +295,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const finalStartTimestamp = `${targetDate} ${startTimeValue}:00`;
         const finalEndTimestamp = `${targetDate} ${endTimeValue}:00`;
 
+        const customerHidden = document.getElementById('modal_customer_id');
+        const customerAddress = customerHidden.getAttribute('data-address') || '';
+
         const params = new URLSearchParams({
             user_id: document.getElementById('modal_user_id').value,
+            customer_id: customerHidden.value,
             start_time: finalStartTimestamp,
             end_time: finalEndTimestamp,
-            house: document.getElementById('modal_house_id').value // Send house detail text to the backend handler
+            cost: document.getElementById('modal_cost').value,
+            house: customerAddress
         });
 
         fetch(`/main/api/make-appointment?${params}`)
@@ -243,11 +330,22 @@ function openAppointmentModal(dateStr) {
     document.getElementById('modal_start_clock').value = "09:00";
     document.getElementById('modal_end_clock').value = "11:00";
     
+    // Reset customer selection
+    document.getElementById('modal_customer_id').value = '';
+    document.getElementById('modal_customer_id').removeAttribute('data-address');
+    document.getElementById('customer_selected_text').textContent = '-- Select a Customer --';
+    document.getElementById('customer_selected_text').className = 'text-slate-400';
+    closeCustomerDropdown();
+    
+    // Clear cost field
+    document.getElementById('modal_cost').value = '';
+    
     document.getElementById('appointmentModal').style.display = 'flex';
 }
 
 function closeModal() {
     document.getElementById('appointmentModal').style.display = 'none';
 }
+
 </script>
 {% endblock %}

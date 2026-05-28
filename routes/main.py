@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from extensions import db
-from models import User
+from models import User, CustomerContact, Appointment
+from datetime import datetime
 
 main_bp = Blueprint('main', __name__, url_prefix='/main', template_folder='/templates')
 
@@ -62,7 +63,8 @@ def get_calendar_data():
                 a.end_time AS end,
                 a.service_notes AS notes
             FROM appointments a
-            JOIN user u ON a.cleaner_id = u.id;
+            JOIN user u ON a.cleaner_id = u.id
+            WHERE a.status != 'Cancelled';
         """
         result = db.session.execute(db.text(query))
         
@@ -103,23 +105,25 @@ def make_appointment():
     """Saves an appointment using apt_id structure and avoids crashing the status ENUM constraints."""
     try:
         u_id = request.args.get('user_id')
+        customer_id = request.args.get('customer_id')
         start = request.args.get('start_time')
         end = request.args.get('end_time')
+        cost = request.args.get('cost')
         house = request.args.get('house', 'Not Assigned')
         
-        if not u_id or not start or not end:
+        if not u_id or not customer_id or not start or not end or not cost:
             return jsonify({"status": "error", "message": "Missing arguments"}), 400
 
-        #  FIXED: 'status' set to 'Scheduled' when a job is scheduled.
-        # House string is safely preserved inside the TEXT field 'service_notes'.
         insert_query = """
-            INSERT INTO appointments (cleaner_id, scheduled_time, end_time, service_notes, status) 
-            VALUES (:cleaner_id, :start_time, :end_time, :service_notes, 'Scheduled')
+            INSERT INTO appointments (cleaner_id, customer_id, scheduled_time, end_time, cost, service_notes, status) 
+            VALUES (:cleaner_id, :customer_id, :start_time, :end_time, :cost, :service_notes, 'Scheduled')
         """
         db.session.execute(db.text(insert_query), {
             'cleaner_id': u_id,
+            'customer_id': customer_id,
             'start_time': start,
             'end_time': end,
+            'cost': cost,
             'service_notes': house
         })
         db.session.commit()
@@ -127,6 +131,100 @@ def make_appointment():
     except Exception as e:
         db.session.rollback()
         return jsonify({"status": "error", "message": f"Insertion Error: {str(e)}"}), 500
+
+
+@main_bp.route('/api/appointment/<int:appointment_id>')
+@login_required
+def get_appointment(appointment_id):
+    """Returns full details for a single appointment."""
+    try:
+        apt = Appointment.query.get_or_404(appointment_id)
+        cleaner = User.query.get(apt.cleaner_id)
+        customer = CustomerContact.query.get(apt.customer_id)
+
+        return jsonify({
+            'apt_id': apt.apt_id,
+            'cleaner_id': apt.cleaner_id,
+            'cleaner_name': cleaner.full_name if cleaner else 'Unknown',
+            'customer_id': apt.customer_id,
+            'customer_name': f'{customer.last_name}, {customer.first_name}' if customer else 'Unknown',
+            'customer_address': customer.full_address() if customer else '',
+            'customer_phone': customer.phone if customer else '',
+            'customer_email': customer.email if customer else '',
+            'status': apt.status,
+            'scheduled_time': apt.scheduled_time.isoformat() if apt.scheduled_time else None,
+            'end_time': apt.end_time.isoformat() if apt.end_time else None,
+            'actual_start_time': apt.actual_start_time.isoformat() if apt.actual_start_time else None,
+            'actual_finish_time': apt.actual_finish_time.isoformat() if apt.actual_finish_time else None,
+            'hours_spent': float(apt.hours_spent) if apt.hours_spent else None,
+            'service_notes': apt.service_notes or '',
+            'cost': float(apt.cost) if apt.cost else None,
+            'paid_date': apt.paid_date.isoformat() if apt.paid_date else None,
+            'created_at': apt.created_at.isoformat() if apt.created_at else None,
+            'updated_at': apt.updated_at.isoformat() if apt.updated_at else None,
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route('/api/update-appointment', methods=['POST'])
+@login_required
+def update_appointment():
+    """Updates appointment fields based on status-based permissions."""
+    try:
+        apt_id = request.form.get('apt_id')
+        apt = Appointment.query.get_or_404(apt_id)
+
+        role = current_user.role
+        is_admin = role in ('OfficeAdmin', 'BusinessOwner')
+        is_same_day = apt.scheduled_time and apt.scheduled_time.date() == datetime.utcnow().date()
+
+        # Determine permissions
+        can_edit = False
+        can_cancel = False
+
+        if apt.status in ('Pending', 'Scheduled'):
+            if is_same_day:
+                can_edit = is_admin
+                can_cancel = is_admin
+            else:
+                can_edit = True
+                can_cancel = True
+        elif apt.status == 'In Progress':
+            can_edit = is_admin
+            can_cancel = is_admin
+        elif apt.status == 'Finished':
+            can_edit = False
+            can_cancel = False
+
+        if not can_edit:
+            return jsonify({"status": "error", "message": "You do not have permission to edit this appointment"}), 403
+
+        # Update allowed fields
+        cleaner_id = request.form.get('cleaner_id')
+        start_time = request.form.get('scheduled_time')
+        end_time = request.form.get('end_time')
+        service_notes = request.form.get('service_notes')
+        action = request.form.get('action')
+
+        if cleaner_id:
+            apt.cleaner_id = int(cleaner_id)
+        if start_time:
+            apt.scheduled_time = datetime.fromisoformat(start_time)
+        if end_time:
+            apt.end_time = datetime.fromisoformat(end_time)
+        if service_notes is not None:
+            apt.service_notes = service_notes
+
+        # Handle cancel action
+        if action == 'cancel' and can_cancel:
+            apt.status = 'Cancelled'
+
+        db.session.commit()
+        return jsonify({"status": "success", "message": "Appointment updated successfully"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": f"Update Error: {str(e)}"}), 500
 
 
 @main_bp.route('/api/delete-appointment', methods=['POST'])
@@ -153,9 +251,9 @@ def delete_appointment():
 @main_bp.route('/api/cleaners')
 @login_required
 def get_cleaners():
-    """Queries your 'user' table safely for all records where role='Cleaner'."""
+    """Queries your 'user' table for all active Cleaner records."""
     try:
-        query = "SELECT id, full_name, email FROM user WHERE role = 'Cleaner';"
+        query = "SELECT id, full_name, email FROM user WHERE role = 'Cleaner' AND active = TRUE;"
         result = db.session.execute(db.text(query))
         
         cleaners = []
@@ -178,4 +276,40 @@ def get_cleaners():
         return jsonify(cleaners)
     except Exception as e:
         return jsonify({"status": "error", "message": f"Cleaner Pull Error: {str(e)}"}), 500
+
+
+@main_bp.route('/api/last-cost/<int:customer_id>')
+@login_required
+def get_last_cost(customer_id):
+    """Returns the cost from the most recent appointment for this customer."""
+    try:
+        last = (Appointment.query
+                .filter(Appointment.customer_id == customer_id,
+                        Appointment.cost.isnot(None))
+                .order_by(Appointment.scheduled_time.desc())
+                .first())
+        return jsonify({
+            'last_cost': float(last.cost) if last and last.cost else None
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route('/api/customers')
+@login_required
+def get_customers():
+    """Returns all customer contacts from the customer_contacts table."""
+    try:
+        customers = CustomerContact.query.order_by(CustomerContact.last_name, CustomerContact.first_name).all()
+        result = []
+        for c in customers:
+            result.append({
+                'customer_id': c.customer_id,
+                'first_name': c.first_name,
+                'last_name': c.last_name,
+                'full_address': c.full_address()
+            })
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Customer Pull Error: {str(e)}"}), 500
 
