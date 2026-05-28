@@ -153,9 +153,9 @@ def customer_details(customer_id):
                 .order_by(Appointment.scheduled_time.asc())
                 .first())
 
-    # All jobs (non-cancelled)
+    # All jobs for this customer
     jobs = (Appointment.query
-            .filter(Appointment.customer_id == customer_id, Appointment.status != 'Cancelled')
+            .filter(Appointment.customer_id == customer_id)
             .order_by(Appointment.scheduled_time.desc())
             .all())
 
