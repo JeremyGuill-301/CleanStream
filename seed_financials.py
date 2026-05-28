@@ -5,7 +5,7 @@ This creates sample appointments with different statuses and costs.
 """
 
 from app import app, db
-from models import Appointment, User
+from models import Appointment, User, CustomerContact
 from datetime import datetime, timedelta
 import random
 
@@ -13,8 +13,9 @@ def seed_financial_data():
     """Create test appointments with revenue data"""
     
     with app.app_context():
-        # Clear existing appointments (optional - comment out if you want to keep existing data)
-        # Appointment.query.delete()
+        # Clear existing appointments to start fresh
+        Appointment.query.delete()
+        db.session.commit()
         
         # Get a cleaner user (or create one if needed)
         cleaners = User.query.filter_by(role='Cleaner').all()
@@ -23,26 +24,51 @@ def seed_financial_data():
             print("No cleaners found. Please create cleaners first using seed_users.py")
             return
         
+        # Get customers for assigning to appointments
+        customers = CustomerContact.query.all()
+        if not customers:
+            print("No customers found. Please create customers first using seed_users.py")
+            return
+
         # Generate sample appointments for the past 3 months
         base_date = datetime.now().date()
         service_costs = [50, 75, 100, 125, 150, 175, 200]
-        statuses = ['Paid', 'Finished', 'Pending']
+        statuses = ['Paid', 'Finished', 'Scheduled']
         
         appointments_created = 0
         
         for days_ago in range(90, 0, -1):
-            if random.random() < 0.3:  # 30% chance of appointment on each day
+            if random.random() < 0.7:  # 70% chance of appointment on each day
                 appointment_date = base_date - timedelta(days=days_ago)
+                
+                # Random scheduled start hour (8 AM - 12 PM)
+                start_hour = random.randint(8, 12)
+                scheduled_start = datetime.combine(appointment_date, datetime.min.time()).replace(hour=start_hour)
+                
+                # Scheduled duration: 1-4 hours
+                scheduled_duration_hours = random.randint(1, 4)
+                scheduled_end = scheduled_start + timedelta(hours=scheduled_duration_hours)
                 
                 # Create appointment
                 appointment = Appointment(
                     cleaner_id=random.choice(cleaners).id,
-                    scheduled_time=datetime.combine(appointment_date, datetime.min.time()).replace(hour=random.randint(9, 16)),
-                    end_time=datetime.combine(appointment_date, datetime.min.time()).replace(hour=random.randint(17, 20)),
+                    customer_id=random.choice(customers).customer_id,
+                    scheduled_time=scheduled_start,
+                    end_time=scheduled_end,
                     status=random.choice(statuses),
                     cost=random.choice(service_costs),
                     service_notes=f"Sample cleaning appointment created for testing"
                 )
+                
+                # For Finished/Paid jobs, populate actual timing so hours_spent gets computed
+                if appointment.status in ('Finished', 'Paid'):
+                    # Actual start: 0-30 minutes after scheduled (being late or early)
+                    late_minutes = random.randint(-15, 30)
+                    appointment.actual_start_time = scheduled_start + timedelta(minutes=late_minutes)
+                    
+                    # Actual duration: varies from scheduled (80% to 120% of scheduled)
+                    actual_duration_hours = scheduled_duration_hours * random.uniform(0.8, 1.2)
+                    appointment.actual_finish_time = appointment.actual_start_time + timedelta(hours=actual_duration_hours)
                 
                 # If status is Paid, set paid_date
                 if appointment.status == 'Paid':

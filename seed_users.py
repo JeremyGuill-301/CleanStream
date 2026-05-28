@@ -47,7 +47,7 @@ with app.app_context():
     jacqueline = User(
         username='jacqueline',
         full_name='Jacqueline',
-        role='BusinessOwner',
+        role='OfficeAdmin',
         password_hash=generate_password_hash('CleanStream2026!')
     )
     cleaner_joe = User(

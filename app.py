@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from flask import Flask, request, render_template, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user
 from flask_migrate import Migrate
-from models import User, Appointment
+from models import User, Appointment, CustomerContact
 from extensions import db, login_manager, migrate
 
 
@@ -44,6 +44,31 @@ with app.app_context():
 
 # Initialize Migration
 migrate.init_app(app, db)
+
+# Populate customer anniversaries on startup
+def populate_anniversaries():
+    from sqlalchemy import func as sa_func
+    from sqlalchemy.exc import OperationalError
+    try:
+        customers_without = CustomerContact.query.filter(CustomerContact.anniversary.is_(None)).all()
+        if not customers_without:
+            return
+        for c in customers_without:
+            first_apt = (db.session.query(sa_func.min(Appointment.scheduled_time))
+                         .filter(Appointment.customer_id == c.customer_id,
+                                 Appointment.status != 'Cancelled')
+                         .first())
+            first_date = first_apt[0] if first_apt and first_apt[0] else None
+            if first_date:
+                c.anniversary = first_date.date() if hasattr(first_date, 'date') else first_date
+            else:
+                c.anniversary = c.created_at.date() if c.created_at else None
+        db.session.commit()
+    except OperationalError:
+        db.session.rollback()
+
+with app.app_context():
+    populate_anniversaries()
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -111,7 +136,7 @@ def dashboard():
     
     # Data for the admin dashboard and directory
     employees = User.query.all()
-    pending = Appointment.query.filter_by(status='Pending').count()
+    pending = Appointment.query.filter(Appointment.status.in_(['Pending', 'Scheduled'])).count()
     return render_template('main/dashboard.html', employees=employees, pending=pending)
 
 @app.route('/add_employee', methods=['POST'])
@@ -179,6 +204,9 @@ def update_status(apt_id):
     
        if new_status == "In Progress" and not appointment.actual_start_time:
           appointment.actual_start_time = datetime.utcnow()
+
+       if new_status == "Finished" and not appointment.actual_finish_time:
+          appointment.actual_finish_time = datetime.utcnow()
 
        db.session.commit()
 

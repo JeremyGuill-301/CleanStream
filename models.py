@@ -1,5 +1,6 @@
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
+from sqlalchemy import Computed
 from extensions import db
 
 class User(UserMixin, db.Model):
@@ -33,6 +34,7 @@ class CustomerContact(db.Model):
     city = db.Column(db.String(100))
     state = db.Column(db.String(2))
     zip_code = db.Column(db.String(10))
+    anniversary = db.Column(db.Date)
     created_at = db.Column(db.DateTime, server_default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, server_default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
@@ -43,9 +45,11 @@ class Appointment(db.Model):
     __tablename__ = 'appointments'
     apt_id = db.Column(db.Integer, primary_key=True)
     cleaner_id = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.Enum('Pending', 'In Progress', 'Finished', 'Paid', 'Busy', 'Cancelled'), default='Pending')
+    status = db.Column(db.Enum('Pending', 'Scheduled', 'In Progress', 'Finished', 'Paid', 'Busy', 'Cancelled'), default='Scheduled')
     scheduled_time = db.Column(db.DateTime)
     actual_start_time = db.Column(db.DateTime)
+    actual_finish_time = db.Column(db.DateTime)
+    hours_spent = db.Column(db.Numeric(5, 2), Computed("ROUND(TIMESTAMPDIFF(SECOND, actual_start_time, actual_finish_time) / 3600, 2)", persisted=True))
     end_time = db.Column(db.DateTime)
     service_notes = db.Column(db.Text)
     cost = db.Column(db.Numeric(10, 2), nullable=True)

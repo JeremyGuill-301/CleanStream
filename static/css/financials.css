@@ -466,6 +466,63 @@ table tbody tr:hover {
     border-radius: 0 0 4px 4px;
 }
 
+/* Dropdown Divider */
+.dropdown-divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 8px 0;
+}
+
+/* Hours Table */
+.hours-table-container {
+    margin-top: 20px;
+    overflow-x: auto;
+}
+
+.hours-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.hours-table thead {
+    background: #3498db;
+    color: white;
+}
+
+.hours-table th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.hours-table td {
+    padding: 12px;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.hours-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.hours-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.hours-table .positive {
+    color: #27ae60;
+    font-weight: 600;
+}
+
+.hours-table .negative {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
 /* Lateness Badge */
 .lateness-badge {
     display: inline-block;
@@ -735,28 +792,34 @@ table tbody tr:hover {
     }
     
     .cleaner-table,
-    .monthly-table {
+    .monthly-table,
+    .hours-table {
         font-size: 12px;
     }
     
     .cleaner-table th,
     .cleaner-table td,
     .monthly-table th,
-    .monthly-table td {
+    .monthly-table td,
+    .hours-table th,
+    .hours-table td {
         padding: 6px;
     }
 }
 
 @media (max-width: 1024px) {
     .cleaner-table,
-    .monthly-table {
+    .monthly-table,
+    .hours-table {
         font-size: 13px;
     }
     
     .cleaner-table th,
     .cleaner-table td,
     .monthly-table th,
-    .monthly-table td {
+    .monthly-table td,
+    .hours-table th,
+    .hours-table td {
         padding: 8px;
     }
 }
@@ -816,7 +879,8 @@ table tbody tr:hover {
     #dashboard-section,
     #unpaid-report-section,
     #cleaner-report-section,
-    #monthly-report-section {
+    #monthly-report-section,
+    #hours-report-section {
         display: none !important;
     }
 
@@ -824,7 +888,8 @@ table tbody tr:hover {
     #dashboard-section[style*="display: block"],
     #unpaid-report-section[style*="display: block"],
     #cleaner-report-section[style*="display: block"],
-    #monthly-report-section[style*="display: block"] {
+    #monthly-report-section[style*="display: block"],
+    #hours-report-section[style*="display: block"] {
         display: block !important;
         width: 100% !important;
         margin: 0 !important;
@@ -916,7 +981,8 @@ table tbody tr:hover {
 
     #report-content,
     #cleaner-report-content,
-    #monthly-report-content {
+    #monthly-report-content,
+    #hours-report-content {
         display: block !important;
         width: 100% !important;
     }
@@ -1007,13 +1073,15 @@ table tbody tr:hover {
     }
 
     .cleaner-table-container,
-    .monthly-table-container {
+    .monthly-table-container,
+    .hours-table-container {
         page-break-inside: auto !important;
         overflow: visible !important;
     }
 
     .cleaner-table,
-    .monthly-table {
+    .monthly-table,
+    .hours-table {
         width: 100% !important;
         border-collapse: collapse !important;
         box-shadow: none !important;
@@ -1022,14 +1090,16 @@ table tbody tr:hover {
     }
 
     .cleaner-table thead,
-    .monthly-table thead {
+    .monthly-table thead,
+    .hours-table thead {
         background: #4a90e2 !important;
         color: white !important;
         display: table-header-group !important;
     }
 
     .cleaner-table th,
-    .monthly-table th {
+    .monthly-table th,
+    .hours-table th {
         padding: 6px !important;
         font-weight: bold !important;
         border: 1px solid #4a90e2 !important;
@@ -1038,13 +1108,15 @@ table tbody tr:hover {
     }
 
     .cleaner-table td,
-    .monthly-table td {
+    .monthly-table td,
+    .hours-table td {
         padding: 6px !important;
         border: 1px solid #ddd !important;
     }
 
     .cleaner-table tbody tr,
-    .monthly-table tbody tr {
+    .monthly-table tbody tr,
+    .hours-table tbody tr {
         page-break-inside: avoid !important;
     }
 
@@ -1133,6 +1205,7 @@ table tbody tr:hover {
     #unpaid-report-section[style*="display: block"],
     #cleaner-report-section[style*="display: block"],
     #monthly-report-section[style*="display: block"],
+    #hours-report-section[style*="display: block"],
     #dashboard-section[style*="display: block"] {
         display: block !important;
         visibility: visible !important;
@@ -1143,6 +1216,7 @@ table tbody tr:hover {
     #unpaid-report-section[style*="display: none"],
     #cleaner-report-section[style*="display: none"],
     #monthly-report-section[style*="display: none"],
+    #hours-report-section[style*="display: none"],
     #dashboard-section[style*="display: none"] {
         display: none !important;
     }
@@ -1150,7 +1224,8 @@ table tbody tr:hover {
     /* Ensure all report content divs are visible */
     #report-content,
     #cleaner-report-content,
-    #monthly-report-content {
+    #monthly-report-content,
+    #hours-report-content {
         display: block !important;
         visibility: visible !important;
         width: 100% !important;
