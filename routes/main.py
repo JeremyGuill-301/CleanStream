@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from extensions import db
-from models import User
+from models import User, CustomerContact
 
 main_bp = Blueprint('main', __name__, url_prefix='/main', template_folder='/templates')
 
@@ -103,21 +103,21 @@ def make_appointment():
     """Saves an appointment using apt_id structure and avoids crashing the status ENUM constraints."""
     try:
         u_id = request.args.get('user_id')
+        customer_id = request.args.get('customer_id')
         start = request.args.get('start_time')
         end = request.args.get('end_time')
         house = request.args.get('house', 'Not Assigned')
         
-        if not u_id or not start or not end:
+        if not u_id or not customer_id or not start or not end:
             return jsonify({"status": "error", "message": "Missing arguments"}), 400
 
-        #  FIXED: 'status' set to 'Scheduled' when a job is scheduled.
-        # House string is safely preserved inside the TEXT field 'service_notes'.
         insert_query = """
-            INSERT INTO appointments (cleaner_id, scheduled_time, end_time, service_notes, status) 
-            VALUES (:cleaner_id, :start_time, :end_time, :service_notes, 'Scheduled')
+            INSERT INTO appointments (cleaner_id, customer_id, scheduled_time, end_time, service_notes, status) 
+            VALUES (:cleaner_id, :customer_id, :start_time, :end_time, :service_notes, 'Scheduled')
         """
         db.session.execute(db.text(insert_query), {
             'cleaner_id': u_id,
+            'customer_id': customer_id,
             'start_time': start,
             'end_time': end,
             'service_notes': house
@@ -153,9 +153,9 @@ def delete_appointment():
 @main_bp.route('/api/cleaners')
 @login_required
 def get_cleaners():
-    """Queries your 'user' table safely for all records where role='Cleaner'."""
+    """Queries your 'user' table for all active Cleaner records."""
     try:
-        query = "SELECT id, full_name, email FROM user WHERE role = 'Cleaner';"
+        query = "SELECT id, full_name, email FROM user WHERE role = 'Cleaner' AND active = TRUE;"
         result = db.session.execute(db.text(query))
         
         cleaners = []
@@ -178,4 +178,23 @@ def get_cleaners():
         return jsonify(cleaners)
     except Exception as e:
         return jsonify({"status": "error", "message": f"Cleaner Pull Error: {str(e)}"}), 500
+
+
+@main_bp.route('/api/customers')
+@login_required
+def get_customers():
+    """Returns all customer contacts from the customer_contacts table."""
+    try:
+        customers = CustomerContact.query.order_by(CustomerContact.last_name, CustomerContact.first_name).all()
+        result = []
+        for c in customers:
+            result.append({
+                'customer_id': c.customer_id,
+                'first_name': c.first_name,
+                'last_name': c.last_name,
+                'full_address': c.full_address()
+            })
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Customer Pull Error: {str(e)}"}), 500
 

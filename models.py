@@ -11,9 +11,13 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True)
     password_hash = db.Column(db.String(255))
     role = db.Column(db.Enum('OfficeAdmin', 'Cleaner', 'BusinessOwner'), nullable=False)
+    active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, server_default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -40,6 +44,15 @@ class CustomerContact(db.Model):
 
     #--- RELATIONSHIPS ---
     appointments = db.relationship("Appointment", back_populates="customer")
+
+    def __repr__(self):
+        return f'<CustomerContact {self.first_name} {self.last_name}>'
+
+    def __str__(self):
+        return f'{self.first_name} {self.last_name}'
+
+    def full_address(self):
+        return f'{self.address}, {self.city}, {self.state} {self.zip_code}'
 
 class Appointment(db.Model):
     __tablename__ = 'appointments'
