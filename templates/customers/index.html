@@ -495,7 +495,7 @@
               jobsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">No job history</td></tr>';
             } else {
               jobsBody.innerHTML = data.jobs.map(j => `
-                <tr>
+                <tr data-apt-id="${j.apt_id}" style="cursor:pointer;">
                   <td>${formatDate(j.scheduled_time)}</td>
                   <td>${j.cleaner_name}</td>
                   <td><span class="badge ${j.status === 'Paid' ? 'badge-success' : j.status === 'Finished' ? 'badge-warning' : 'pill-default'}">${j.status}</span></td>
@@ -529,5 +529,15 @@
       });
     });
   });
+
+  // Click handler for job history rows in the customer modal
+  document.getElementById('modalJobsBody').addEventListener('click', function(e) {
+    const tr = e.target.closest('tr');
+    if (!tr || !tr.hasAttribute('data-apt-id')) return;
+    const aptId = tr.getAttribute('data-apt-id');
+    openEditModal(aptId);
+  });
 </script>
+
+{% include 'shared/edit_booking_modal.html' %}
 {% endblock %}
