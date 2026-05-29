@@ -1,0 +1,307 @@
+<div id="editModal" style="display: none;" class="fixed inset-0 z-[200] bg-slate-900/40 items-center justify-center backdrop-blur-sm">
+    <div class="bg-white p-6 rounded-lg w-[550px] shadow-xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <span>Booking #<span id="edit_apt_id"></span></span>
+                <span id="edit_status_badge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"></span>
+            </h3>
+            <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
+        </div>
+
+        <div class="space-y-4">
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Customer Information</h4>
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div><span class="text-slate-500">Name:</span> <span id="edit_customer_name" class="font-medium text-slate-800"></span></div>
+                    <div><span class="text-slate-500">Phone:</span> <span id="edit_customer_phone"></span></div>
+                    <div class="col-span-2"><span class="text-slate-500">Address:</span> <span id="edit_customer_address"></span></div>
+                    <div class="col-span-2"><span class="text-slate-500">Email:</span> <span id="edit_customer_email"></span></div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Schedule &amp; Assignment</h4>
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <label class="text-slate-500 text-xs">Cleaner</label>
+                            <select id="edit_cleaner_id" class="w-full p-2 bg-white border border-slate-300 rounded-md text-sm"></select>
+                        </div>
+                        <div>
+                            <label class="text-slate-500 text-xs">Date</label>
+                            <input type="date" id="edit_date" class="w-full p-2 bg-white border border-slate-300 rounded-md text-sm">
+                        </div>
+                        <div>
+                            <label class="text-slate-500 text-xs">Start Time</label>
+                            <input type="time" id="edit_start_time" class="w-full p-2 bg-white border border-slate-300 rounded-md text-sm">
+                        </div>
+                        <div>
+                            <label class="text-slate-500 text-xs">End Time</label>
+                            <input type="time" id="edit_end_time" class="w-full p-2 bg-white border border-slate-300 rounded-md text-sm">
+                        </div>
+                    </div>
+                    <div id="edit_actual_times" style="display:none" class="grid grid-cols-3 gap-3 text-sm pt-2 border-t border-slate-200">
+                        <div><span class="text-slate-500">Actual Start:</span> <span id="edit_actual_start" class="font-medium"></span></div>
+                        <div><span class="text-slate-500">Actual Finish:</span> <span id="edit_actual_finish" class="font-medium"></span></div>
+                        <div><span class="text-slate-500">Hours:</span> <span id="edit_hours" class="font-medium"></span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Service Notes</h4>
+                <textarea id="edit_service_notes" rows="2" class="w-full p-2 bg-white border border-slate-300 rounded-md text-sm"></textarea>
+            </div>
+
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Payment</h4>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="text-slate-500 text-sm">Amount:</span>
+                        <span id="edit_cost" class="text-lg font-bold text-slate-800"></span>
+                    </div>
+                    <div id="edit_payment_status_container">
+                        <span id="edit_payment_status" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"></span>
+                    </div>
+                </div>
+                <div id="edit_payment_button_container" style="display:none" class="mt-3 pt-3 border-t border-slate-200">
+                    <button id="edit_pay_button" class="px-4 py-2 bg-emerald-500 text-white rounded-md text-sm font-medium hover:bg-emerald-600">
+                        <i class="fas fa-credit-card mr-1"></i> Record Payment
+                    </button>
+                    <span class="text-xs text-slate-400 ml-2">(Functionality coming soon)</span>
+                </div>
+                <div id="edit_paid_info" style="display:none" class="mt-2 text-sm">
+                    <span class="text-slate-500">Paid on:</span> <span id="edit_paid_date" class="font-medium text-green-700"></span>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Timeline</h4>
+                <div class="text-xs text-slate-500 space-y-1">
+                    <div>Created: <span id="edit_created_at"></span></div>
+                    <div>Last Updated: <span id="edit_updated_at"></span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center pt-4 mt-4 border-t border-slate-100">
+            <div>
+                <button id="edit_cancel_booking_btn" style="display:none"
+                        class="px-4 py-2 bg-red-50 text-red-600 rounded-md text-sm font-medium hover:bg-red-100 border border-red-200">
+                    <i class="fas fa-ban mr-1"></i> Cancel Booking
+                </button>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-md font-medium text-sm">Close</button>
+                <button id="edit_save_btn" style="display:none"
+                        class="px-4 py-2 bg-emerald-500 text-white rounded-md font-medium text-sm shadow-sm hover:bg-emerald-600">
+                    <i class="fas fa-save mr-1"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openEditModal(appointmentId) {
+    fetch(`/main/api/appointment/${appointmentId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'error') {
+                alert('Error loading appointment: ' + data.message);
+                return;
+            }
+            populateEditModal(data);
+            document.getElementById('editModal').style.display = 'flex';
+        })
+        .catch(err => {
+            console.error('Error fetching appointment:', err);
+            alert('Failed to load appointment details.');
+        });
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+
+function populateEditModal(d) {
+    document.getElementById('edit_apt_id').textContent = d.apt_id;
+
+    const badge = document.getElementById('edit_status_badge');
+    const statusColors = {
+        'Pending': 'bg-yellow-100 text-yellow-800',
+        'Scheduled': 'bg-blue-100 text-blue-800',
+        'In Progress': 'bg-indigo-100 text-indigo-800',
+        'Finished': 'bg-green-100 text-green-800',
+        'Paid': 'bg-emerald-100 text-emerald-800',
+        'Cancelled': 'bg-red-100 text-red-800',
+        'Busy': 'bg-gray-100 text-gray-800'
+    };
+    badge.textContent = d.status;
+    badge.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + (statusColors[d.status] || 'bg-gray-100 text-gray-800');
+
+    document.getElementById('edit_customer_name').textContent = d.customer_name;
+    document.getElementById('edit_customer_phone').textContent = d.customer_phone || 'N/A';
+    document.getElementById('edit_customer_address').textContent = d.customer_address || 'N/A';
+    document.getElementById('edit_customer_email').textContent = d.customer_email || 'N/A';
+
+    const aptDate = d.scheduled_time ? d.scheduled_time.split('T')[0] : '';
+    const startTime = d.scheduled_time ? d.scheduled_time.split('T')[1].substring(0, 5) : '';
+    const endTime = d.end_time ? d.end_time.split('T')[1].substring(0, 5) : '';
+    document.getElementById('edit_date').value = aptDate;
+    document.getElementById('edit_start_time').value = startTime;
+    document.getElementById('edit_end_time').value = endTime;
+
+    const cleanerSelect = document.getElementById('edit_cleaner_id');
+    fetch("/main/api/cleaners")
+        .then(res => res.json())
+        .then(cleaners => {
+            cleanerSelect.innerHTML = '';
+            cleaners.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.full_name;
+                if (c.id == d.cleaner_id) opt.selected = true;
+                cleanerSelect.appendChild(opt);
+            });
+        });
+
+    const actualTimesDiv = document.getElementById('edit_actual_times');
+    if (d.actual_start_time || d.actual_finish_time) {
+        actualTimesDiv.style.display = 'grid';
+        document.getElementById('edit_actual_start').textContent = d.actual_start_time ? d.actual_start_time.split('T')[1].substring(0, 5) : '—';
+        document.getElementById('edit_actual_finish').textContent = d.actual_finish_time ? d.actual_finish_time.split('T')[1].substring(0, 5) : '—';
+        document.getElementById('edit_hours').textContent = d.hours_spent != null ? d.hours_spent + ' hrs' : '—';
+    } else {
+        actualTimesDiv.style.display = 'none';
+    }
+
+    document.getElementById('edit_service_notes').value = d.service_notes || '';
+
+    const costEl = document.getElementById('edit_cost');
+    if (d.cost != null) {
+        costEl.textContent = '$' + d.cost.toFixed(2);
+    } else {
+        costEl.textContent = '—';
+    }
+
+    const payBtnContainer = document.getElementById('edit_payment_button_container');
+    const paidInfo = document.getElementById('edit_paid_info');
+    const payStatus = document.getElementById('edit_payment_status');
+
+    if (d.status === 'Paid') {
+        payStatus.textContent = 'Paid in Full';
+        payStatus.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800';
+        payBtnContainer.style.display = 'none';
+        paidInfo.style.display = 'block';
+        document.getElementById('edit_paid_date').textContent = d.paid_date ? new Date(d.paid_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+    } else if (d.status === 'Finished' || d.status === 'In Progress') {
+        if (d.cost != null && d.cost > 0) {
+            payStatus.textContent = 'Outstanding - $' + d.cost.toFixed(2);
+            payStatus.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800';
+        } else {
+            payStatus.textContent = 'No cost set';
+            payStatus.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600';
+        }
+        payBtnContainer.style.display = 'block';
+        paidInfo.style.display = 'none';
+    } else {
+        payStatus.textContent = d.cost != null ? '$' + d.cost.toFixed(2) : '—';
+        payStatus.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600';
+        payBtnContainer.style.display = 'none';
+        paidInfo.style.display = 'none';
+    }
+
+    document.getElementById('edit_created_at').textContent = d.created_at ? new Date(d.created_at).toLocaleString() : '—';
+    document.getElementById('edit_updated_at').textContent = d.updated_at ? new Date(d.updated_at).toLocaleString() : '—';
+
+    // Status-based permissions
+    const role = '{{ current_user.role }}';
+    const isAdmin = role === 'OfficeAdmin' || role === 'BusinessOwner';
+    const aptDateObj = d.scheduled_time ? new Date(d.scheduled_time) : null;
+    const today = new Date();
+    const isSameDay = aptDateObj && aptDateObj.toDateString() === today.toDateString();
+
+    let canEdit = false;
+    let canCancel = false;
+
+    if (d.status === 'Pending' || d.status === 'Scheduled') {
+        if (isSameDay) {
+            canEdit = isAdmin;
+            canCancel = isAdmin;
+        } else {
+            canEdit = true;
+            canCancel = true;
+        }
+    } else if (d.status === 'In Progress') {
+        canEdit = isAdmin;
+        canCancel = isAdmin;
+    }
+
+    const editFields = ['edit_cleaner_id', 'edit_date', 'edit_start_time', 'edit_end_time', 'edit_service_notes'];
+    editFields.forEach(id => {
+        document.getElementById(id).disabled = !canEdit;
+    });
+
+    document.getElementById('edit_save_btn').style.display = canEdit ? 'inline-flex' : 'none';
+    document.getElementById('edit_cancel_booking_btn').style.display = canCancel ? 'inline-flex' : 'none';
+
+    document.getElementById('edit_save_btn').setAttribute('data-apt-id', d.apt_id);
+    document.getElementById('edit_cancel_booking_btn').setAttribute('data-apt-id', d.apt_id);
+}
+
+document.getElementById('edit_save_btn').addEventListener('click', function() {
+    const aptId = this.getAttribute('data-apt-id');
+    const dateVal = document.getElementById('edit_date').value;
+    const startVal = document.getElementById('edit_start_time').value;
+    const endVal = document.getElementById('edit_end_time').value;
+
+    const formData = new URLSearchParams();
+    formData.append('apt_id', aptId);
+    formData.append('cleaner_id', document.getElementById('edit_cleaner_id').value);
+    formData.append('scheduled_time', `${dateVal} ${startVal}:00`);
+    formData.append('end_time', `${dateVal} ${endVal}:00`);
+    formData.append('service_notes', document.getElementById('edit_service_notes').value);
+
+    fetch('/main/api/update-appointment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                closeEditModal();
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => alert('Update failed: ' + err));
+});
+
+document.getElementById('edit_cancel_booking_btn').addEventListener('click', function() {
+    const aptId = this.getAttribute('data-apt-id');
+    if (!confirm('Are you sure you want to cancel this booking?')) return;
+
+    const formData = new URLSearchParams();
+    formData.append('apt_id', aptId);
+    formData.append('action', 'cancel');
+
+    fetch('/main/api/update-appointment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                closeEditModal();
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => alert('Cancel failed: ' + err));
+});
+</script>
