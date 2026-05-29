@@ -178,11 +178,33 @@
 <div class="space-y-6">
   <div class="flex items-center justify-between">
     <h1 class="text-3xl font-bold text-gray-900">Customers</h1>
-    <span class="text-sm text-gray-500 bg-white px-4 py-2 rounded-lg shadow-sm">{{ cust_count }} total</span>
+  </div>
+
+  <!-- Search & Filter Controls -->
+  <div class="flex flex-col sm:flex-row gap-3">
+    <div class="relative flex-1">
+      <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+      <input type="text" id="customerSearch" placeholder="Search by name, phone, email, property, or address..."
+             class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition text-sm">
+    </div>
+    <div class="relative">
+      <i class="fas fa-filter absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+      <select id="customerFilter" class="pl-10 pr-8 py-2.5 rounded-lg border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition text-sm bg-white appearance-none cursor-pointer min-w-[180px]">
+        <option value="all">All Customers</option>
+        <option value="active">Active (future bookings)</option>
+        <option value="followup">Follow Up (recent, no future)</option>
+        <option value="inactive">Inactive (no recent activity)</option>
+        <option value="balance">Balance Due</option>
+      </select>
+      <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+    </div>
+    <div class="flex items-center text-sm text-gray-500 bg-white px-4 py-2 rounded-lg border border-gray-200">
+      <span id="visibleCount">{{ cust_count }}</span>/<span>{{ cust_count }}</span> shown
+    </div>
   </div>
 
   {% if customers %}
-    <div class="space-y-4">
+    <div class="space-y-4" id="customerList">
       {% for customer in customers %}
         {% set cid = customer.customer_id %}
         {% set border = 'border-l-gray-300' %}
@@ -192,7 +214,11 @@
           {% set border = 'border-l-yellow-500' %}
         {% endif %}
 
-        <div class="customer-card bg-white rounded-lg shadow border-l-4 {{ border }} hover:shadow-md transition-shadow" data-customer-id="{{ cid }}">
+        <div class="customer-card bg-white rounded-lg shadow border-l-4 {{ border }} hover:shadow-md transition-shadow"
+             data-customer-id="{{ cid }}"
+             data-active="{{ 'true' if cust_has_future.get(cid) else 'false' }}"
+             data-recent="{{ 'true' if cust_has_recent.get(cid) else 'false' }}"
+             data-outstanding="{{ '%.2f'|format(cust_outstanding.get(cid, 0)) }}">
           <div class="grid grid-cols-12 gap-4 p-5">
 
             <!-- SECTION 1: Name, Phone, Email -->
@@ -537,6 +563,51 @@
     const aptId = tr.getAttribute('data-apt-id');
     openEditModal(aptId);
   });
+
+  // --- Customer Search & Filter ---
+  const searchInput = document.getElementById('customerSearch');
+  const filterSelect = document.getElementById('customerFilter');
+  const visibleCount = document.getElementById('visibleCount');
+
+  function filterCustomers() {
+    const query = searchInput.value.toLowerCase().trim();
+    const filter = filterSelect.value;
+    const cards = document.querySelectorAll('.customer-card');
+    let visible = 0;
+
+    cards.forEach(card => {
+      const name = card.querySelector('.text-lg.font-semibold')?.textContent?.toLowerCase() || '';
+      const phone = card.querySelector('.fa-phone-alt')?.parentElement?.textContent?.toLowerCase() || '';
+      const email = card.querySelector('.fa-envelope')?.parentElement?.textContent?.toLowerCase() || '';
+      const property = card.querySelector('.fa-home')?.parentElement?.textContent?.toLowerCase() || '';
+      const address = card.querySelector('.fa-map-marker-alt')?.parentElement?.textContent?.toLowerCase() || '';
+      const cardText = card.textContent.toLowerCase();
+
+      const matchesSearch = !query || name.includes(query) || phone.includes(query) || email.includes(query) || property.includes(query) || address.includes(query) || cardText.includes(query);
+
+      const isActive = card.dataset.active === 'true';
+      const isRecent = card.dataset.recent === 'true';
+      const outstanding = parseFloat(card.dataset.outstanding || '0');
+
+      let matchesFilter = true;
+      if (filter === 'active') matchesFilter = isActive;
+      else if (filter === 'followup') matchesFilter = isRecent && !isActive;
+      else if (filter === 'inactive') matchesFilter = !isRecent && !isActive;
+      else if (filter === 'balance') matchesFilter = outstanding > 0;
+
+      if (matchesSearch && matchesFilter) {
+        card.style.display = '';
+        visible++;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    visibleCount.textContent = visible;
+  }
+
+  searchInput.addEventListener('input', filterCustomers);
+  filterSelect.addEventListener('change', filterCustomers);
 </script>
 
 {% include 'shared/edit_booking_modal.html' %}
