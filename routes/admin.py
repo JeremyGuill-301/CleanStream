@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from extensions import db
-from models import User
+from models import User, Appointment
 from werkzeug.security import generate_password_hash
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin', template_folder='/templates')
@@ -84,3 +84,20 @@ def delete_user(user_id):
     db.session.commit()
 
     return jsonify({'success': True, 'message': 'User deleted successfully'})
+
+@admin_bp.route('/invoicing')
+@login_required
+def invoicing():
+
+    if current_user.role not in ['OfficeAdmin', 'BusinessOwner']:
+        flash('Access denied. Admin privileges required.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    finished_jobs = Appointment.query.filter_by(
+        status='Finished'
+    ).all()
+
+    return render_template(
+        'admin/invoicing.html',
+        finished_jobs=finished_jobs
+    )
