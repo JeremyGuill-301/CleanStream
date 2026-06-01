@@ -1,69 +1,65 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Ready For Invoicing</title>
-</head>
 
-<body style="
-    background:#f4f7fc;
-    font-family: Arial, sans-serif;
-    padding:20px;
-;">
+{% extends "admin/base.html" %}
 
-<h1 style="color:#1f2a44; margin-bottom:25px;">Office Staff Dashboard</h1>
- <div style="
-    background:#1f2a44;
-    color:white;
-    padding:25px;
-    border-radius:12px;
-    margin-bottom:25px;
-">
-    <h2 style="margin:0;">
-        {{ finished_jobs|length }}
-    </h2>
-    <p style="margin-top:5px;">
-        Jobs Ready For Invoicing
-    </p>
+{% block admin_content %}
+
+<div class="glass p-8 rounded-3xl shadow-2xl">
+
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-3xl font-bold text-gray-800">
+            Jobs Ready For Invoicing
+        </h2>
+    </div>
+    <div class="bg-green-50 p-4 rounded-xl mb-6">
+    <h3 class="text-lg font-semibold text-green-800">
+        {{ finished_jobs|length }} Jobs Ready To Be Invoiced
+    </h3>
 </div>
+{% if finished_jobs %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="border-b border-gray-200">
+                    <th class="pb-3 text-gray-600">Appointment</th>
+                    <th class="pb-3 text-gray-600">Customer</th>
+                    <th class="pb-3 text-gray-600">Status</th>
+                    <th class="pb-3 text-gray-600">Finished</th>
+                </tr>
+            </thead>
 
-    {% if finished_jobs %}
-        {% for job in finished_jobs %}
+            <tbody>
+                {% for job in finished_jobs %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
 
-        <div style="
-            background:white;
-            border-radius:10px;
-            padding:20px;
-            margin-bottom:20px;
-            box-shadow:0 2px 8px rgba(0,0,0,.08);
-            border-left:5px solid #18c37e;
-        ">
-        <h3 style="color:#1f2a44;margin-top:0; margin-bottom:20px;">Appointment #{{ job.apt_id }}</h3>
-        <p>
-            <strong>Status:</strong>
-                {{ job.status }}
-        </p>
+                    <td class="py-4 font-semibold">
+                        #{{ job.apt_id }}
+                    </td>
+                    <td class="py-4 text-gray-600">
+                        {{ job.customer.first_name }} {{ job.customer.last_name }}
+                    </td>
+                    <td class="py-4">
+                        <span class="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
+                            {{ job.status }}
+                        </span>
+                    </td>
 
-        <p>
-            <strong>Finished:</strong>
-                {{ job.actual_finish_time }}
-        </p>
-            <span style="background:#18c37e; color:white; padding:6px 12px; 
-            border-radius:20px; font-size:14px;"> Ready For Invoicing</span> 
-            
-        </div>
+                   <td class="py-4 text-gray-600">
+                       {{ job.actual_finish_time.strftime('%b %d, %Y') }}<br>
+                   <span class="text-sm text-gray-500">
+                         {{ job.actual_finish_time.strftime('%I:%M %p') }}
+                   </span>
+                 </td>
+                </tr>
+                {% endfor %}
+            </tbody>
 
-        {% endfor %}
-    {% else %}
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="text-center py-10 text-gray-500">
+    No jobs are ready for invoicing.
+</div>
+{% endif %}
 
-        <div style="
-            background:white;
-            padding:20px;
-            border-radius:12px;
-        ">
-            No completed jobs waiting for invoicing.
-        </div>
-
-    {% endif %}
-
-</body>
-</html>
+{% endblock %}

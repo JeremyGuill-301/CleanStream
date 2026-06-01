@@ -60,7 +60,7 @@ class Appointment(db.Model):
     cleaner_id = db.Column(db.Integer, nullable=False)
     status = db.Column(db.Enum('Pending', 'Scheduled', 'In Progress', 'Finished', 'Paid', 'Busy', 'Cancelled'), default='Scheduled')
     scheduled_time = db.Column(db.DateTime)
-    actual_start_time = db.Column(db.DateTime)
+    actual_start_time = db.Column(db.DateTime) 
     actual_finish_time = db.Column(db.DateTime)
     hours_spent = db.Column(db.Numeric(5, 2), Computed("ROUND(TIMESTAMPDIFF(SECOND, actual_start_time, actual_finish_time) / 3600, 2)", persisted=True))
     end_time = db.Column(db.DateTime)

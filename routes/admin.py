@@ -95,6 +95,8 @@ def invoicing():
 
     finished_jobs = Appointment.query.filter_by(
         status='Finished'
+    ).order_by(
+        Appointment.actual_finish_time.desc()
     ).all()
 
     return render_template(

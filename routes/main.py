@@ -181,7 +181,7 @@ def update_appointment():
 
         # Determine permissions
         can_edit = False
-        can_cancel = False
+        can_cancel = False 
 
         if apt.status in ('Pending', 'Scheduled'):
             if is_same_day:
@@ -226,6 +226,24 @@ def update_appointment():
         db.session.rollback()
         return jsonify({"status": "error", "message": f"Update Error: {str(e)}"}), 500
 
+@main_bp.route('/complete-job/<int:apt_id>', methods=['POST'])
+@login_required
+def complete_job(apt_id):
+    try:
+        appointment = Appointment.query.get_or_404(apt_id)
+
+        appointment.status = 'Finished'
+        appointment.actual_finish_time = datetime.utcnow()
+
+        db.session.commit()
+
+        flash('Job marked as completed!', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error: {str(e)}', 'danger')
+
+    return redirect(request.referrer or url_for('main.dashboard'))
 
 @main_bp.route('/api/delete-appointment', methods=['POST'])
 @login_required

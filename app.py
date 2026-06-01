@@ -119,7 +119,7 @@ def start_appointment(id):
     if not appointment:
         return jsonify({"error": "Appointment not found"}), 404
 
-    appointment.status = "In Progress"
+    appointment.status = "In Progress" 
     appointment.actual_start_time = datetime.utcnow()
 
     db.session.commit()
